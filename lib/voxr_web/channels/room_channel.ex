@@ -11,17 +11,12 @@ defmodule VoxrWeb.RoomChannel do
 
     Chat.mark_read(socket.assigns.current_user.id, channel_id)
 
-    send(self(), :after_join)
+    Phoenix.PubSub.unsubscribe(Voxr.PubSub, "room:#{channel_id}")
+    Phoenix.PubSub.subscribe(Voxr.PubSub, "room:#{channel_id}")
 
     {:ok,
      %{channel: serialize_channel(channel), messages: Enum.map(messages, &serialize_message/1)},
      assign(socket, :channel_id, channel_id)}
-  end
-
-  @impl true
-  def handle_info(:after_join, socket) do
-    Phoenix.PubSub.subscribe(Voxr.PubSub, "room:#{socket.assigns.channel_id}")
-    {:noreply, socket}
   end
 
   def handle_info({:new_message, message}, socket) do
