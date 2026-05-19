@@ -122,6 +122,6 @@
 
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    @apply bg-slate-950 text-slate-100 h-screen overflow-hidden bg-background text-foreground;
+    @apply bg-background text-foreground h-screen overflow-hidden;
   }
 }

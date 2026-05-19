@@ -1,6 +1,10 @@
 import { useState, FormEvent } from 'react';
 import { connect } from '../socket';
 import type { Session } from '../types';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface Props {
   onConnect: (session: Session) => void;
@@ -62,49 +66,45 @@ export default function Connect({ onConnect }: Props) {
   }
 
   return (
-    <div className="flex-1 flex items-center justify-center bg-slate-950">
-      <div className="bg-slate-900 rounded-xl p-8 w-[380px] shadow-2xl border border-slate-800">
-        <h1 className="text-3xl font-bold mb-1 text-teal-400">Voxr</h1>
-        <p className="text-slate-400 mb-6">Connect to a server</p>
-
-        <form onSubmit={handleSubmit}>
-          <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">
-            Server URL
-          </label>
-          <input
-            className="block w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-slate-100 mb-4 outline-none focus:border-teal-500 transition-colors"
-            type="text"
-            value={serverUrl}
-            onChange={(e) => setServerUrl(e.target.value)}
-            placeholder="http://localhost:4000"
-            required
-          />
-
-          <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">
-            Username
-          </label>
-          <input
-            className="block w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-slate-100 mb-4 outline-none focus:border-teal-500 transition-colors"
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="your_username"
-            required
-            minLength={2}
-            maxLength={32}
-          />
-
-          {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
-
-          <button
-            className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold rounded-lg py-3 cursor-pointer mt-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            type="submit"
-            disabled={loading}
-          >
-            {loading ? 'Connecting…' : 'Connect'}
-          </button>
-        </form>
-      </div>
+    <div className="flex-1 flex items-center justify-center">
+      <Card className="w-[380px]">
+        <CardHeader>
+          <CardTitle className="text-2xl">Voxr</CardTitle>
+          <CardDescription>Connect to a server</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="serverUrl">Server URL</Label>
+              <Input
+                id="serverUrl"
+                type="text"
+                value={serverUrl}
+                onChange={(e) => setServerUrl(e.target.value)}
+                placeholder="http://localhost:4000"
+                required
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="your_username"
+                required
+                minLength={2}
+                maxLength={32}
+              />
+            </div>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <Button type="submit" disabled={loading} className="w-full">
+              {loading ? 'Connecting…' : 'Connect'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

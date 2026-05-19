@@ -2,6 +2,26 @@ import { useState, useEffect, useRef, FormEvent } from 'react';
 import { Channel as PhxChannel } from 'phoenix';
 import { disconnect } from '../socket';
 import type { Session, Channel, Message } from '../types';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuBadge,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+} from '@/components/ui/sidebar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { LogOutIcon } from 'lucide-react';
 
 interface Props {
   session: Session;
@@ -78,110 +98,99 @@ export default function Chat({ session, onDisconnect }: Props) {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Sidebar */}
-      <div className="w-[220px] bg-slate-900 flex flex-col shrink-0 select-none border-r border-slate-800">
-        <div className="px-4 py-3 font-bold border-b border-slate-800 text-sm truncate text-teal-400">
-          {serverName}
-        </div>
+    <SidebarProvider className="h-screen overflow-hidden">
+      <Sidebar collapsible="none">
+        <SidebarHeader className="border-b px-4 py-3">
+          <span className="font-bold text-sm truncate">{serverName}</span>
+        </SidebarHeader>
 
-        <div className="px-4 pt-4 pb-1 text-xs font-bold text-slate-500 uppercase tracking-wider">
-          Text Channels
-        </div>
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupLabel>Text Channels</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {channels.map((ch) => {
+                  const count = unread[ch.id] ?? 0;
+                  const isActive = activeChannel?.id === ch.id;
+                  return (
+                    <SidebarMenuItem key={ch.id}>
+                      <SidebarMenuButton isActive={isActive} onClick={() => joinChannel(ch)}>
+                        <span className="text-muted-foreground">#</span>
+                        <span>{ch.name}</span>
+                      </SidebarMenuButton>
+                      {count > 0 && !isActive && (
+                        <SidebarMenuBadge>{count > 99 ? '99+' : count}</SidebarMenuBadge>
+                      )}
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
 
-        <div className="flex-1 overflow-y-auto">
-          {channels.map((ch) => {
-            const count = unread[ch.id] ?? 0;
-            const isActive = activeChannel?.id === ch.id;
-            return (
-              <button
-                key={ch.id}
-                className={`flex items-center gap-1 w-[calc(100%-1rem)] mx-2 my-px px-2 py-1.5 rounded-md border-none cursor-pointer text-left text-sm transition-colors ${
-                  isActive
-                    ? 'bg-slate-800 text-teal-400'
-                    : 'bg-transparent text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
-                }`}
-                onClick={() => joinChannel(ch)}
-              >
-                <span className={isActive ? 'text-teal-500' : 'text-slate-500'}>#</span>
-                <span className="flex-1">{ch.name}</span>
-                {count > 0 && !isActive && (
-                  <span className="bg-teal-500 text-slate-950 rounded-full text-xs font-bold px-1.5 min-w-[18px] text-center">
-                    {count > 99 ? '99+' : count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="px-3 py-3 border-t border-slate-800 flex items-center gap-2">
-          <div className="w-7 h-7 bg-teal-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0 text-slate-950">
-            {username[0].toUpperCase()}
+        <SidebarFooter className="border-t">
+          <div className="flex items-center gap-2 px-2 py-1">
+            <Avatar size="sm">
+              <AvatarFallback>{username[0].toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <span className="flex-1 text-sm truncate">{username}</span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon-sm" onClick={handleDisconnect}>
+                  <LogOutIcon />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Disconnect</TooltipContent>
+            </Tooltip>
           </div>
-          <span className="flex-1 text-sm overflow-hidden text-ellipsis whitespace-nowrap text-slate-300">
-            {username}
-          </span>
-          <button
-            className="bg-transparent border-none text-slate-500 hover:text-red-400 cursor-pointer text-sm p-0.5 transition-colors"
-            onClick={handleDisconnect}
-            title="Disconnect"
-          >
-            ✕
-          </button>
-        </div>
-      </div>
+        </SidebarFooter>
+      </Sidebar>
 
-      {/* Main */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-slate-950">
+      <SidebarInset className="overflow-hidden">
         {activeChannel ? (
           <>
-            <div className="px-4 py-3 border-b border-slate-800 font-semibold text-sm shrink-0 flex items-center gap-2 bg-slate-950 select-none">
-              <span className="text-teal-500">#</span>
-              <span className="text-slate-100">{activeChannel.name}</span>
-            </div>
+            <header className="flex items-center gap-2 border-b px-4 py-3 shrink-0 select-none">
+              <span className="text-muted-foreground">#</span>
+              <span className="font-semibold text-sm">{activeChannel.name}</span>
+            </header>
 
             <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-0.5 select-text">
               {messages.map((msg, i) => (
-                <div key={msg.id ?? i} className="flex gap-3 px-2 py-1 rounded-md hover:bg-slate-900/60">
-                  <div className="w-8 h-8 bg-teal-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 text-slate-950">
-                    {msg.user.username[0].toUpperCase()}
-                  </div>
+                <div key={msg.id ?? i} className="flex gap-3 px-2 py-1 rounded-md hover:bg-muted/40">
+                  <Avatar size="sm" className="mt-0.5 shrink-0">
+                    <AvatarFallback>{msg.user.username[0].toUpperCase()}</AvatarFallback>
+                  </Avatar>
                   <div>
                     <div className="flex items-baseline gap-2 mb-0.5">
-                      <span className="font-semibold text-sm text-teal-400">{msg.user.display_name ?? msg.user.username}</span>
-                      <span className="text-xs text-slate-500">{formatTime(msg.inserted_at)}</span>
+                      <span className="font-semibold text-sm">{msg.user.display_name ?? msg.user.username}</span>
+                      <span className="text-xs text-muted-foreground">{formatTime(msg.inserted_at)}</span>
                     </div>
-                    <p className="text-sm text-slate-300 leading-relaxed">{msg.content}</p>
+                    <p className="text-sm leading-relaxed">{msg.content}</p>
                   </div>
                 </div>
               ))}
               <div ref={messagesEndRef} />
             </div>
 
-            <form onSubmit={sendMessage} className="p-4 flex gap-2 shrink-0 border-t border-slate-800">
-              <input
-                className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-slate-100 outline-none focus:border-teal-500 transition-colors placeholder:text-slate-500"
+            <form onSubmit={sendMessage} className="flex gap-2 p-4 shrink-0 border-t">
+              <Input
+                className="flex-1 h-9"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={`Message #${activeChannel.name}`}
                 autoFocus
               />
-              <button
-                className="bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold border-none rounded-lg px-4 py-2.5 cursor-pointer transition-colors"
-                type="submit"
-              >
-                Send
-              </button>
+              <Button type="submit" size="lg">Send</Button>
             </form>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-slate-500">
+          <div className="flex-1 flex items-center justify-center text-muted-foreground">
             Select a channel to start chatting
           </div>
         )}
-      </div>
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
 
