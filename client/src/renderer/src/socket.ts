@@ -1,8 +1,8 @@
-import { Socket } from "phoenix";
+import { Socket } from 'phoenix';
 
-let socket = null;
+let socket: Socket | null = null;
 
-export function connect(serverUrl, username) {
+export function connect(serverUrl: string, username: string): Socket {
   if (socket) socket.disconnect();
 
   socket = new Socket(`${serverUrl}/socket`, {
@@ -13,13 +13,13 @@ export function connect(serverUrl, username) {
   return socket;
 }
 
-export function disconnect() {
+export function disconnect(): void {
   if (socket) {
     socket.disconnect();
     socket = null;
   }
 }
 
-export function getSocket() {
+export function getSocket(): Socket | null {
   return socket;
 }
