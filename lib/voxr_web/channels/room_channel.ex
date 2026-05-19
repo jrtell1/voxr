@@ -9,9 +9,12 @@ defmodule VoxrWeb.RoomChannel do
     channel = Chat.get_channel!(channel_id)
     messages = Chat.list_messages(channel_id)
 
+    Chat.mark_read(socket.assigns.current_user.id, channel_id)
+
     send(self(), :after_join)
 
-    {:ok, %{channel: serialize_channel(channel), messages: Enum.map(messages, &serialize_message/1)},
+    {:ok,
+     %{channel: serialize_channel(channel), messages: Enum.map(messages, &serialize_message/1)},
      assign(socket, :channel_id, channel_id)}
   end
 
@@ -23,6 +26,8 @@ defmodule VoxrWeb.RoomChannel do
 
   def handle_info({:new_message, message}, socket) do
     push(socket, "new_message", serialize_message(message))
+    Chat.mark_read(socket.assigns.current_user.id, socket.assigns.channel_id)
+    push(socket, "unread_updated", %{channel_id: socket.assigns.channel_id, count: 0})
     {:noreply, socket}
   end
 
@@ -46,7 +51,11 @@ defmodule VoxrWeb.RoomChannel do
       id: message.id,
       content: message.content,
       inserted_at: DateTime.to_iso8601(message.inserted_at),
-      user: %{id: message.user.id, username: message.user.username, display_name: message.user.display_name}
+      user: %{
+        id: message.user.id,
+        username: message.user.username,
+        display_name: message.user.display_name
+      }
     }
   end
 end

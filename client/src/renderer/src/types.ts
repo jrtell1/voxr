@@ -1,4 +1,4 @@
-import type { Socket } from 'phoenix';
+import type { Socket, Channel as PhxChannel } from 'phoenix';
 
 export interface Channel {
   id: number;
@@ -21,8 +21,10 @@ export interface Message {
 
 export interface Session {
   socket: Socket;
+  userChannel: PhxChannel;
   serverUrl: string;
   serverName: string;
   username: string;
   channels: Channel[];
+  initialUnread: Record<number, number>;
 }

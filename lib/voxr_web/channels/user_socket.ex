@@ -2,6 +2,7 @@ defmodule VoxrWeb.UserSocket do
   use Phoenix.Socket
 
   channel "room:*", VoxrWeb.RoomChannel
+  channel "user:me", VoxrWeb.UserChannel
 
   @impl true
   def connect(%{"username" => username}, socket, _connect_info) do

@@ -18,19 +18,45 @@ export default function Connect({ onConnect }: Props) {
     setLoading(true);
 
     try {
-      const res = await fetch(`${serverUrl}/api/info`);
-      if (!res.ok) throw new Error('Server unreachable');
-      const info: { name: string } = await res.json();
+      const [infoRes, channelsRes] = await Promise.all([
+        fetch(`${serverUrl}/api/info`),
+        fetch(`${serverUrl}/api/channels`),
+      ]);
 
+      if (!infoRes.ok) throw new Error('Server unreachable');
+
+      const info: { name: string } = await infoRes.json();
+      const channels = await channelsRes.json();
       const socket = connect(serverUrl.replace(/^http/, 'ws'), username.trim());
 
-      const channelsRes = await fetch(`${serverUrl}/api/channels`);
-      const channels = await channelsRes.json();
+      const userChannel = socket.channel('user:me');
 
-      onConnect({ socket, serverUrl, serverName: info.name, username: username.trim(), channels });
+      userChannel
+        .join()
+        .receive('ok', ({ unread_counts }: { unread_counts: Record<number, number> }) => {
+          onConnect({
+            socket,
+            userChannel,
+            serverUrl,
+            serverName: info.name,
+            username: username.trim(),
+            channels,
+            initialUnread: unread_counts,
+          });
+        })
+        .receive('error', () => {
+          onConnect({
+            socket,
+            userChannel,
+            serverUrl,
+            serverName: info.name,
+            username: username.trim(),
+            channels,
+            initialUnread: {},
+          });
+        });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not connect');
-    } finally {
       setLoading(false);
     }
   }
@@ -77,44 +103,11 @@ export default function Connect({ onConnect }: Props) {
 
 const styles: Record<string, React.CSSProperties> = {
   wrapper: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#111827' },
-  card: {
-    background: '#1f2937',
-    borderRadius: 12,
-    padding: '2rem',
-    width: 380,
-    boxShadow: '0 8px 32px rgba(0,0,0,0.4)'
-  },
+  card: { background: '#1f2937', borderRadius: 12, padding: '2rem', width: 380, boxShadow: '0 8px 32px rgba(0,0,0,0.4)' },
   title: { fontSize: 28, fontWeight: 700, marginBottom: 4 },
   subtitle: { color: '#9ca3af', marginBottom: '1.5rem' },
-  label: {
-    display: 'block',
-    fontSize: 12,
-    fontWeight: 600,
-    color: '#9ca3af',
-    marginBottom: 4,
-    textTransform: 'uppercase'
-  },
-  input: {
-    display: 'block',
-    width: '100%',
-    background: '#374151',
-    border: '1px solid #4b5563',
-    borderRadius: 8,
-    padding: '0.6rem 0.8rem',
-    color: '#f9fafb',
-    marginBottom: '1rem',
-    outline: 'none'
-  },
+  label: { display: 'block', fontSize: 12, fontWeight: 600, color: '#9ca3af', marginBottom: 4, textTransform: 'uppercase' },
+  input: { display: 'block', width: '100%', background: '#374151', border: '1px solid #4b5563', borderRadius: 8, padding: '0.6rem 0.8rem', color: '#f9fafb', marginBottom: '1rem', outline: 'none' },
   error: { color: '#f87171', fontSize: 13, marginBottom: '0.75rem' },
-  button: {
-    width: '100%',
-    background: '#4f46e5',
-    color: '#fff',
-    border: 'none',
-    borderRadius: 8,
-    padding: '0.75rem',
-    fontWeight: 600,
-    cursor: 'pointer',
-    marginTop: 4
-  },
+  button: { width: '100%', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 8, padding: '0.75rem', fontWeight: 600, cursor: 'pointer', marginTop: 4 },
 };
