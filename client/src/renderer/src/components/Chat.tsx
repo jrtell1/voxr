@@ -138,7 +138,7 @@ export default function Chat({ session, onDisconnect }: Props) {
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="ghost" size="icon-sm" onClick={handleDisconnect}>
-                  <LogOutIcon />
+                  <LogOutIcon className="size-3.5" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Disconnect</TooltipContent>

@@ -13,7 +13,7 @@ export default function TitleBar() {
           className="rounded-none h-9 w-11 hover:bg-muted"
           onClick={() => window.electron.minimize()}
         >
-          <MinusIcon />
+          <MinusIcon className="size-3.5" />
         </Button>
         <Button
           variant="ghost"
@@ -21,7 +21,7 @@ export default function TitleBar() {
           className="rounded-none h-9 w-11 hover:bg-muted"
           onClick={() => window.electron.maximize()}
         >
-          <SquareIcon />
+          <SquareIcon className="size-3.5" />
         </Button>
         <Button
           variant="ghost"
@@ -29,7 +29,7 @@ export default function TitleBar() {
           className="rounded-none h-9 w-11 hover:bg-destructive hover:text-destructive-foreground"
           onClick={() => window.electron.close()}
         >
-          <XIcon />
+          <XIcon className="size-3.5" />
         </Button>
       </div>
     </div>
