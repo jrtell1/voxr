@@ -112,7 +112,7 @@ export default function Chat({ session, onDisconnect }: Props) {
       <SidebarInset className="overflow-hidden">
         {activeChannel ? (
           <>
-            <header className="flex items-center gap-2 border-b px-4 py-3 shrink-0 select-none">
+            <header className="flex items-center gap-2 border-b px-4 h-12 shrink-0 select-none">
               <span className="text-muted-foreground">#</span>
               <span className="font-semibold text-sm">{activeChannel.name}</span>
             </header>

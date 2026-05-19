@@ -11,7 +11,7 @@ interface Props {
 
 export default function MessageInput({ value, channelName, onChange, onSubmit }: Props) {
   return (
-    <form onSubmit={onSubmit} className="flex items-center gap-2 p-4 shrink-0 border-t">
+    <form onSubmit={onSubmit} className="flex items-center gap-2 pb-4 px-4 shrink-0">
       <div className="relative flex-1">
         <Input
           className="h-11 pr-14 px-3"

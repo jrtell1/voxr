@@ -38,7 +38,7 @@ export default function ChatSidebar({
 }: Props) {
   return (
     <Sidebar collapsible="none">
-      <SidebarHeader className="border-b px-4 py-3">
+      <SidebarHeader className="border-b px-4 h-12 flex-row items-center">
         <span className="font-bold text-sm truncate">{serverName}</span>
       </SidebarHeader>
 
