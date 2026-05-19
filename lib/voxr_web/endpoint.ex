@@ -5,6 +5,8 @@ defmodule VoxrWeb.Endpoint do
     websocket: true,
     longpoll: false
 
+  plug CORSPlug, origin: "*"
+
   plug Plug.RequestId
   plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
 
