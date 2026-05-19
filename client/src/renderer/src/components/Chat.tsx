@@ -21,6 +21,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Kbd } from '@/components/ui/kbd';
 import { LogOutIcon } from 'lucide-react';
 
 interface Props {
@@ -173,15 +174,17 @@ export default function Chat({ session, onDisconnect }: Props) {
               <div ref={messagesEndRef} />
             </div>
 
-            <form onSubmit={sendMessage} className="flex gap-2 p-4 shrink-0 border-t">
-              <Input
-                className="flex-1 h-9"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder={`Message #${activeChannel.name}`}
-                autoFocus
-              />
-              <Button type="submit" size="lg">Send</Button>
+            <form onSubmit={sendMessage} className="flex items-center gap-2 p-4 shrink-0 border-t">
+              <div className="relative flex-1">
+                <Input
+                  className="h-11 pr-14 px-3"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder={`Message #${activeChannel.name}`}
+                  autoFocus
+                />
+                <Kbd className="absolute right-2 top-1/2 -translate-y-1/2 h-7 px-2.5 text-sm">↵</Kbd>
+              </div>
             </form>
           </>
         ) : (
