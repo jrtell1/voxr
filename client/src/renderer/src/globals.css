@@ -115,6 +115,14 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+@utility drag-region {
+  -webkit-app-region: drag;
+}
+
+@utility no-drag-region {
+  -webkit-app-region: no-drag;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

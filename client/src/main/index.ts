@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, IpcMainEvent } from 'electron';
 import { join } from 'path';
 
 function createWindow() {
@@ -8,6 +8,8 @@ function createWindow() {
     minWidth: 800,
     minHeight: 600,
     backgroundColor: '#111827',
+    frame: false,
+    autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -21,6 +23,17 @@ function createWindow() {
     win.loadFile(join(__dirname, '../renderer/index.html'));
   }
 }
+
+function getWindow(e: IpcMainEvent) {
+  return BrowserWindow.fromWebContents(e.sender);
+}
+
+ipcMain.on('window:minimize', (e) => getWindow(e)?.minimize());
+ipcMain.on('window:maximize', (e) => {
+  const win = getWindow(e);
+  if (win) win.isMaximized() ? win.unmaximize() : win.maximize();
+});
+ipcMain.on('window:close', (e) => getWindow(e)?.close());
 
 app.whenReady().then(createWindow);
 

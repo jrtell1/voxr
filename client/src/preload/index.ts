@@ -1,7 +1,8 @@
-import { contextBridge } from 'electron';
+import { contextBridge, ipcRenderer } from 'electron';
 
-// Expose any privileged APIs to the renderer here.
-// For now the renderer handles the Phoenix socket directly.
 contextBridge.exposeInMainWorld('electron', {
   platform: process.platform,
+  minimize: () => ipcRenderer.send('window:minimize'),
+  maximize: () => ipcRenderer.send('window:maximize'),
+  close: () => ipcRenderer.send('window:close'),
 });

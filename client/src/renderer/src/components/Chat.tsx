@@ -98,7 +98,7 @@ export default function Chat({ session, onDisconnect }: Props) {
   }
 
   return (
-    <SidebarProvider className="h-screen overflow-hidden">
+    <SidebarProvider className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
       <Sidebar collapsible="none">
         <SidebarHeader className="border-b px-4 py-3">
           <span className="font-bold text-sm truncate">{serverName}</span>
