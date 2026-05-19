@@ -80,12 +80,12 @@ export default function Chat({ session, onDisconnect }: Props) {
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
-      <div className="w-[220px] bg-gray-800 flex flex-col shrink-0 select-none">
-        <div className="px-4 py-3 font-bold border-b border-gray-700 text-sm truncate">
+      <div className="w-[220px] bg-slate-900 flex flex-col shrink-0 select-none border-r border-slate-800">
+        <div className="px-4 py-3 font-bold border-b border-slate-800 text-sm truncate text-teal-400">
           {serverName}
         </div>
 
-        <div className="px-4 pt-4 pb-1 text-xs font-bold text-gray-500 uppercase tracking-wider">
+        <div className="px-4 pt-4 pb-1 text-xs font-bold text-slate-500 uppercase tracking-wider">
           Text Channels
         </div>
 
@@ -98,15 +98,15 @@ export default function Chat({ session, onDisconnect }: Props) {
                 key={ch.id}
                 className={`flex items-center gap-1 w-[calc(100%-1rem)] mx-2 my-px px-2 py-1.5 rounded-md border-none cursor-pointer text-left text-sm transition-colors ${
                   isActive
-                    ? 'bg-gray-700 text-gray-50'
-                    : 'bg-transparent text-gray-400 hover:bg-gray-700/60 hover:text-gray-200'
+                    ? 'bg-slate-800 text-teal-400'
+                    : 'bg-transparent text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
                 }`}
                 onClick={() => joinChannel(ch)}
               >
-                <span className="text-gray-500">#</span>
+                <span className={isActive ? 'text-teal-500' : 'text-slate-500'}>#</span>
                 <span className="flex-1">{ch.name}</span>
                 {count > 0 && !isActive && (
-                  <span className="bg-red-500 text-white rounded-full text-xs font-bold px-1.5 min-w-[18px] text-center">
+                  <span className="bg-teal-500 text-slate-950 rounded-full text-xs font-bold px-1.5 min-w-[18px] text-center">
                     {count > 99 ? '99+' : count}
                   </span>
                 )}
@@ -115,15 +115,15 @@ export default function Chat({ session, onDisconnect }: Props) {
           })}
         </div>
 
-        <div className="px-3 py-3 border-t border-gray-700 flex items-center gap-2">
-          <div className="w-7 h-7 bg-indigo-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0">
+        <div className="px-3 py-3 border-t border-slate-800 flex items-center gap-2">
+          <div className="w-7 h-7 bg-teal-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0 text-slate-950">
             {username[0].toUpperCase()}
           </div>
-          <span className="flex-1 text-sm overflow-hidden text-ellipsis whitespace-nowrap">
+          <span className="flex-1 text-sm overflow-hidden text-ellipsis whitespace-nowrap text-slate-300">
             {username}
           </span>
           <button
-            className="bg-transparent border-none text-gray-500 hover:text-gray-300 cursor-pointer text-sm p-0.5 transition-colors"
+            className="bg-transparent border-none text-slate-500 hover:text-red-400 cursor-pointer text-sm p-0.5 transition-colors"
             onClick={handleDisconnect}
             title="Disconnect"
           >
@@ -133,42 +133,42 @@ export default function Chat({ session, onDisconnect }: Props) {
       </div>
 
       {/* Main */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden bg-slate-950">
         {activeChannel ? (
           <>
-            <div className="px-4 py-3 border-b border-gray-700 font-semibold text-sm shrink-0 flex items-center gap-2">
-              <span className="text-gray-400">#</span>
-              {activeChannel.name}
+            <div className="px-4 py-3 border-b border-slate-800 font-semibold text-sm shrink-0 flex items-center gap-2 bg-slate-950 select-none">
+              <span className="text-teal-500">#</span>
+              <span className="text-slate-100">{activeChannel.name}</span>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-0.5 select-text">
               {messages.map((msg, i) => (
-                <div key={msg.id ?? i} className="flex gap-3 px-2 py-1 rounded-md hover:bg-gray-800/60">
-                  <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
+                <div key={msg.id ?? i} className="flex gap-3 px-2 py-1 rounded-md hover:bg-slate-900/60">
+                  <div className="w-8 h-8 bg-teal-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 text-slate-950">
                     {msg.user.username[0].toUpperCase()}
                   </div>
                   <div>
                     <div className="flex items-baseline gap-2 mb-0.5">
-                      <span className="font-semibold text-sm">{msg.user.display_name ?? msg.user.username}</span>
-                      <span className="text-xs text-gray-500">{formatTime(msg.inserted_at)}</span>
+                      <span className="font-semibold text-sm text-teal-400">{msg.user.display_name ?? msg.user.username}</span>
+                      <span className="text-xs text-slate-500">{formatTime(msg.inserted_at)}</span>
                     </div>
-                    <p className="text-sm text-gray-300 leading-relaxed">{msg.content}</p>
+                    <p className="text-sm text-slate-300 leading-relaxed">{msg.content}</p>
                   </div>
                 </div>
               ))}
               <div ref={messagesEndRef} />
             </div>
 
-            <form onSubmit={sendMessage} className="p-4 flex gap-2 shrink-0">
+            <form onSubmit={sendMessage} className="p-4 flex gap-2 shrink-0 border-t border-slate-800">
               <input
-                className="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2.5 text-gray-50 outline-none focus:border-indigo-500"
+                className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-slate-100 outline-none focus:border-teal-500 transition-colors placeholder:text-slate-500"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={`Message #${activeChannel.name}`}
                 autoFocus
               />
               <button
-                className="bg-indigo-600 hover:bg-indigo-500 text-white border-none rounded-lg px-4 py-2.5 font-semibold cursor-pointer transition-colors"
+                className="bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold border-none rounded-lg px-4 py-2.5 cursor-pointer transition-colors"
                 type="submit"
               >
                 Send
@@ -176,7 +176,7 @@ export default function Chat({ session, onDisconnect }: Props) {
             </form>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-500">
+          <div className="flex-1 flex items-center justify-center text-slate-500">
             Select a channel to start chatting
           </div>
         )}
