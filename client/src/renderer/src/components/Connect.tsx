@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react';
-import { connect } from '../socket';
 import type { Session } from '../types';
+import { createSession } from '@/lib/session';
+import { getLastServer, saveServer } from '@/lib/storage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,8 +12,9 @@ interface Props {
 }
 
 export default function Connect({ onConnect }: Props) {
-  const [serverUrl, setServerUrl] = useState('http://localhost:4000');
-  const [username, setUsername] = useState('');
+  const last = getLastServer();
+  const [serverUrl, setServerUrl] = useState(last?.serverUrl ?? 'http://localhost:4000');
+  const [username, setUsername] = useState(last?.username ?? '');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -22,43 +24,9 @@ export default function Connect({ onConnect }: Props) {
     setLoading(true);
 
     try {
-      const [infoRes, channelsRes] = await Promise.all([
-        fetch(`${serverUrl}/api/info`),
-        fetch(`${serverUrl}/api/channels`),
-      ]);
-
-      if (!infoRes.ok) throw new Error('Server unreachable');
-
-      const info: { name: string } = await infoRes.json();
-      const channels = await channelsRes.json();
-      const socket = connect(serverUrl.replace(/^http/, 'ws'), username.trim());
-
-      const userChannel = socket.channel('user:me');
-
-      userChannel
-        .join()
-        .receive('ok', ({ unread_counts }: { unread_counts: Record<number, number> }) => {
-          onConnect({
-            socket,
-            userChannel,
-            serverUrl,
-            serverName: info.name,
-            username: username.trim(),
-            channels,
-            initialUnread: unread_counts,
-          });
-        })
-        .receive('error', () => {
-          onConnect({
-            socket,
-            userChannel,
-            serverUrl,
-            serverName: info.name,
-            username: username.trim(),
-            channels,
-            initialUnread: {},
-          });
-        });
+      const session = await createSession(serverUrl, username);
+      saveServer(serverUrl, username);
+      onConnect(session);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not connect');
       setLoading(false);
