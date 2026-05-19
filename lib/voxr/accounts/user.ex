@@ -1,0 +1,33 @@
+defmodule Voxr.Accounts.User do
+  use Ecto.Schema
+  import Ecto.Changeset
+
+  schema "users" do
+    field :username, :string
+    field :display_name, :string
+
+    has_many :messages, Voxr.Chat.Message
+
+    timestamps(type: :utc_datetime)
+  end
+
+  def changeset(user, attrs) do
+    user
+    |> cast(attrs, [:username, :display_name])
+    |> validate_required([:username])
+    |> validate_length(:username, min: 2, max: 32)
+    |> validate_format(:username, ~r/^[a-zA-Z0-9_]+$/)
+    |> unique_constraint(:username)
+    |> put_display_name()
+  end
+
+  defp put_display_name(%{changes: %{username: u}} = changeset) do
+    if get_field(changeset, :display_name) do
+      changeset
+    else
+      put_change(changeset, :display_name, u)
+    end
+  end
+
+  defp put_display_name(changeset), do: changeset
+end
