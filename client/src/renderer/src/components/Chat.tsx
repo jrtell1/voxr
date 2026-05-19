@@ -47,7 +47,7 @@ export default function Chat({ session, onDisconnect }: Props) {
   }, [userChannel]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView();
   }, [messages]);
 
   function joinChannel(channel: Channel) {
