@@ -62,15 +62,17 @@ export default function Connect({ onConnect }: Props) {
   }
 
   return (
-    <div style={styles.wrapper}>
-      <div style={styles.card}>
-        <h1 style={styles.title}>Voxr</h1>
-        <p style={styles.subtitle}>Connect to a server</p>
+    <div className="flex-1 flex items-center justify-center bg-gray-900">
+      <div className="bg-gray-800 rounded-xl p-8 w-[380px] shadow-2xl">
+        <h1 className="text-3xl font-bold mb-1">Voxr</h1>
+        <p className="text-gray-400 mb-6">Connect to a server</p>
 
         <form onSubmit={handleSubmit}>
-          <label style={styles.label}>Server URL</label>
+          <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">
+            Server URL
+          </label>
           <input
-            style={styles.input}
+            className="block w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2.5 text-gray-50 mb-4 outline-none focus:border-indigo-500"
             type="text"
             value={serverUrl}
             onChange={(e) => setServerUrl(e.target.value)}
@@ -78,9 +80,11 @@ export default function Connect({ onConnect }: Props) {
             required
           />
 
-          <label style={styles.label}>Username</label>
+          <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">
+            Username
+          </label>
           <input
-            style={styles.input}
+            className="block w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2.5 text-gray-50 mb-4 outline-none focus:border-indigo-500"
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
@@ -90,9 +94,13 @@ export default function Connect({ onConnect }: Props) {
             maxLength={32}
           />
 
-          {error && <p style={styles.error}>{error}</p>}
+          {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
 
-          <button style={styles.button} type="submit" disabled={loading}>
+          <button
+            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white border-none rounded-lg py-3 font-semibold cursor-pointer mt-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            type="submit"
+            disabled={loading}
+          >
             {loading ? 'Connecting…' : 'Connect'}
           </button>
         </form>
@@ -100,14 +108,3 @@ export default function Connect({ onConnect }: Props) {
     </div>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  wrapper: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#111827' },
-  card: { background: '#1f2937', borderRadius: 12, padding: '2rem', width: 380, boxShadow: '0 8px 32px rgba(0,0,0,0.4)' },
-  title: { fontSize: 28, fontWeight: 700, marginBottom: 4 },
-  subtitle: { color: '#9ca3af', marginBottom: '1.5rem' },
-  label: { display: 'block', fontSize: 12, fontWeight: 600, color: '#9ca3af', marginBottom: 4, textTransform: 'uppercase' },
-  input: { display: 'block', width: '100%', background: '#374151', border: '1px solid #4b5563', borderRadius: 8, padding: '0.6rem 0.8rem', color: '#f9fafb', marginBottom: '1rem', outline: 'none' },
-  error: { color: '#f87171', fontSize: 13, marginBottom: '0.75rem' },
-  button: { width: '100%', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 8, padding: '0.75rem', fontWeight: 600, cursor: 'pointer', marginTop: 4 },
-};
