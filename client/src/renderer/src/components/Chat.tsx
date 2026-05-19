@@ -35,8 +35,11 @@ export default function Chat({ session, onDisconnect }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [unread, setUnread] = useState<Record<number, number>>(initialUnread);
+  const [unreadStartIndex, setUnreadStartIndex] = useState<number | null>(null);
   const channelRef = useRef<PhxChannel | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const dividerRef = useRef<HTMLDivElement | null>(null);
+  const scrollToUnread = useRef(false);
 
   useEffect(() => {
     userChannel.on('unread_updated', ({ channel_id, count }: { channel_id: number; count: number }) => {
@@ -47,7 +50,12 @@ export default function Chat({ session, onDisconnect }: Props) {
   }, [userChannel]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView();
+    if (scrollToUnread.current && dividerRef.current) {
+      dividerRef.current.scrollIntoView();
+      scrollToUnread.current = false;
+    } else {
+      messagesEndRef.current?.scrollIntoView();
+    }
   }, [messages]);
 
   function joinChannel(channel: Channel) {
@@ -57,9 +65,17 @@ export default function Chat({ session, onDisconnect }: Props) {
       phxChannel
         .join()
         .receive('ok', ({ messages: history }: { messages: Message[] }) => {
+          const unreadCount = unread[channel.id] ?? 0;
           setMessages(history);
           setActiveChannel(channel);
           setUnread((prev) => ({ ...prev, [channel.id]: 0 }));
+          if (unreadCount > 0 && history.length > 0) {
+            setUnreadStartIndex(Math.max(0, history.length - unreadCount));
+            scrollToUnread.current = true;
+          } else {
+            setUnreadStartIndex(null);
+            scrollToUnread.current = false;
+          }
         })
         .receive('error', (err: unknown) => console.error('Join error', err));
 
@@ -158,7 +174,15 @@ export default function Chat({ session, onDisconnect }: Props) {
 
             <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-0.5 select-text">
               {messages.map((msg, i) => (
-                <div key={msg.id ?? i} className="flex gap-3 px-2 py-1 rounded-md hover:bg-muted/40">
+                <div key={msg.id ?? i}>
+                  {i === unreadStartIndex && (
+                    <div ref={dividerRef} className="flex items-center gap-3 my-3">
+                      <div className="flex-1 h-px bg-destructive/60" />
+                      <span className="text-xs font-semibold text-destructive shrink-0">New messages</span>
+                      <div className="flex-1 h-px bg-destructive/60" />
+                    </div>
+                  )}
+                <div className="flex gap-3 px-2 py-1 rounded-md hover:bg-muted/40">
                   <Avatar size="sm" className="mt-0.5 shrink-0">
                     <AvatarFallback>{msg.user.username[0].toUpperCase()}</AvatarFallback>
                   </Avatar>
@@ -169,6 +193,7 @@ export default function Chat({ session, onDisconnect }: Props) {
                     </div>
                     <p className="text-sm leading-relaxed">{msg.content}</p>
                   </div>
+                </div>
                 </div>
               ))}
               <div ref={messagesEndRef} />
