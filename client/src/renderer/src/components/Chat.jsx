@@ -14,24 +14,28 @@ export default function Chat({ session, onDisconnect }) {
   }, [messages]);
 
   function joinChannel(channel) {
+    const doJoin = () => {
+      const phxChannel = socket.channel(`room:${channel.id}`);
+
+      phxChannel.join()
+        .receive("ok", ({ messages: history }) => {
+          setMessages(history);
+          setActiveChannel(channel);
+        })
+        .receive("error", (err) => console.error("Join error", err));
+
+      phxChannel.on("new_message", (msg) => {
+        setMessages((prev) => [...prev, msg]);
+      });
+
+      channelRef.current = phxChannel;
+    };
+
     if (channelRef.current) {
-      channelRef.current.leave();
+      channelRef.current.leave().receive("ok", doJoin);
+    } else {
+      doJoin();
     }
-
-    const phxChannel = socket.channel(`room:${channel.id}`);
-
-    phxChannel.join()
-      .receive("ok", ({ messages: history }) => {
-        setMessages(history);
-        setActiveChannel(channel);
-      })
-      .receive("error", (err) => console.error("Join error", err));
-
-    phxChannel.on("new_message", (msg) => {
-      setMessages((prev) => [...prev, msg]);
-    });
-
-    channelRef.current = phxChannel;
   }
 
   function sendMessage(e) {
