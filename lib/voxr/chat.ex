@@ -122,11 +122,17 @@ defmodule Voxr.Chat do
       nil ->
         Repo.transaction(fn ->
           channel = Repo.insert!(%Channel{name: "dm", type: "dm"})
+          now = DateTime.utc_now(:second)
 
           Repo.insert_all(ChannelMember, [
             %{channel_id: channel.id, user_id: user_a_id},
             %{channel_id: channel.id, user_id: user_b_id}
           ])
+
+          Repo.insert_all(ChannelRead, [
+            %{user_id: user_a_id, channel_id: channel.id, last_read_id: 0, updated_at: now},
+            %{user_id: user_b_id, channel_id: channel.id, last_read_id: 0, updated_at: now}
+          ], on_conflict: :nothing)
 
           channel
         end)

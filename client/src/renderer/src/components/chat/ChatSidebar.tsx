@@ -131,6 +131,7 @@ export default function ChatSidebar({
                   {dmChannels.map((dm) => {
                     const name = dm.other_user.display_name ?? dm.other_user.username;
                     const isActive = dm.id === activeDmId;
+                    const count = unread[dm.id] ?? 0;
                     return (
                       <SidebarMenuItem key={dm.id}>
                         <SidebarMenuButton isActive={isActive} onClick={() => onJoinDm(dm)}>
@@ -139,6 +140,9 @@ export default function ChatSidebar({
                           </Avatar>
                           <span>{name}</span>
                         </SidebarMenuButton>
+                        {count > 0 && !isActive && (
+                          <SidebarMenuBadge>{count > 99 ? '99+' : count}</SidebarMenuBadge>
+                        )}
                       </SidebarMenuItem>
                     );
                   })}

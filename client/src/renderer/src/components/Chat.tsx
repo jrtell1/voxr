@@ -136,10 +136,17 @@ export default function Chat({ session, onDisconnect }: Props) {
   function joinDmChannel(dmChannel: DmChannel) {
     switchPhxChannel(`room:${dmChannel.id}`, ({ messages: history }) => {
       const history_ = history as Message[];
+      const unreadCount = unread[dmChannel.id] ?? 0;
       setMessages(history_);
       setActiveView({ type: 'dm', dmChannel });
-      setUnreadStartIndex(null);
-      scrollToUnread.current = false;
+      setUnread((prev) => ({ ...prev, [dmChannel.id]: 0 }));
+      if (unreadCount > 0 && history_.length > 0) {
+        setUnreadStartIndex(Math.max(0, history_.length - unreadCount));
+        scrollToUnread.current = true;
+      } else {
+        setUnreadStartIndex(null);
+        scrollToUnread.current = false;
+      }
     });
   }
 
