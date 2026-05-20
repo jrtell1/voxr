@@ -2,6 +2,22 @@ const SERVERS_KEY = 'voxr_servers';
 const LAST_KEY = 'voxr_last_server';
 const SESSION_KEY = 'voxr_session';
 const SHAKE_KEY = 'voxr_shake_enabled';
+const LAST_CHANNEL_KEY = 'voxr_last_channel';
+
+export function saveLastChannel(serverUrl: string, channelId: number): void {
+  localStorage.setItem(LAST_CHANNEL_KEY, JSON.stringify({ serverUrl, channelId }));
+}
+
+export function getLastChannel(serverUrl: string): number | null {
+  try {
+    const raw = localStorage.getItem(LAST_CHANNEL_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed.serverUrl === serverUrl ? parsed.channelId : null;
+  } catch {
+    return null;
+  }
+}
 
 export function getShakeEnabled(): boolean {
   return localStorage.getItem(SHAKE_KEY) !== 'false';

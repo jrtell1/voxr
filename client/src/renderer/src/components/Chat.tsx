@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, FormEvent } from 'react';
 import { Channel as PhxChannel, Presence } from 'phoenix';
 import { disconnect } from '../socket';
-import { getShakeEnabled } from '../lib/storage';
+import { getShakeEnabled, saveLastChannel, getLastChannel } from '../lib/storage';
 import type { Session, Channel, Message } from '../types';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import ChatSidebar from './chat/ChatSidebar';
@@ -23,6 +23,7 @@ export default function Chat({ session, onDisconnect }: Props) {
   const [displayName, setDisplayName] = useState<string | null>(session.displayName);
   const [unreadStartIndex, setUnreadStartIndex] = useState<number | null>(null);
   const [presences, setPresences] = useState<Record<string, { metas: { username: string; display_name: string | null }[] }>>({});
+  const { serverUrl } = session;
   const [allUsers, setAllUsers] = useState<PresenceUser[]>([]);
   const [pokeFrom, setPokeFrom] = useState<string | null>(null);
   const channelRef = useRef<PhxChannel | null>(null);
@@ -59,6 +60,13 @@ export default function Chat({ session, onDisconnect }: Props) {
   }, [socket, userChannel]);
 
   useEffect(() => {
+    const lastChannelId = getLastChannel(serverUrl);
+    if (!lastChannelId) return;
+    const channel = channels.find((c) => c.id === lastChannelId);
+    if (channel) joinChannel(channel);
+  }, []);
+
+  useEffect(() => {
     if (scrollToUnread.current && dividerRef.current) {
       dividerRef.current.scrollIntoView();
       scrollToUnread.current = false;
@@ -78,6 +86,7 @@ export default function Chat({ session, onDisconnect }: Props) {
           setMessages(history);
           setActiveChannel(channel);
           setAllUsers(users.map((u) => ({ id: String(u.id), userId: u.id, username: u.username, displayName: u.display_name })));
+          saveLastChannel(serverUrl, channel.id);
           setUnread((prev) => ({ ...prev, [channel.id]: 0 }));
           if (unreadCount > 0 && history.length > 0) {
             setUnreadStartIndex(Math.max(0, history.length - unreadCount));
