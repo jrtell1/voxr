@@ -23,7 +23,7 @@ function UserRow({ user, online, currentUsername, onPoke }: { user: PresenceUser
     <UserPopover userId={user.userId} username={user.username} displayName={user.displayName} isSelf={isSelf} onPoke={onPoke}>
       <button className="flex items-center gap-2 px-1 py-1 rounded-md w-full hover:bg-accent text-left cursor-pointer no-drag-region">
         <div className="relative shrink-0">
-          <Avatar size="sm" className={online ? '' : 'opacity-40'}>
+          <Avatar size="default" className={online ? '' : 'opacity-40'}>
             <AvatarFallback>{visibleName[0].toUpperCase()}</AvatarFallback>
           </Avatar>
           {online && (
@@ -43,13 +43,7 @@ function UserRow({ user, online, currentUsername, onPoke }: { user: PresenceUser
 
 export default function UserList({ onlineUsers, offlineUsers, currentUsername, onPoke }: Props) {
   return (
-    <aside className="w-48 border-l flex flex-col shrink-0 overflow-y-auto">
-      <div className="px-3 py-2 h-12 flex items-center border-b shrink-0">
-        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Members
-        </span>
-      </div>
-
+    <aside className="w-64 border-l flex flex-col shrink-0 overflow-y-auto">
       <div className="flex flex-col p-2">
         {onlineUsers.length > 0 && (
           <>

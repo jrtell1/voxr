@@ -27,10 +27,10 @@ export default function MessageList({ messages, unreadStartIndex, messagesEndRef
                 <div className="flex-1 h-px bg-destructive/60" />
               </div>
             )}
-            <div className="flex gap-3 px-2 py-1 rounded-md hover:bg-muted/40">
+            <div className="flex gap-3 px-2 py-1 rounded-md hover:bg-muted/40 items-start">
               <UserPopover userId={msg.user.id} username={msg.user.username} displayName={msg.user.display_name} isSelf={isSelf} onPoke={onPoke}>
                 <button className="mt-0.5 shrink-0 cursor-pointer no-drag-region">
-                  <Avatar size="sm">
+                  <Avatar size="default">
                     <AvatarFallback>{visibleName[0].toUpperCase()}</AvatarFallback>
                   </Avatar>
                 </button>

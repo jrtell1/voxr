@@ -167,15 +167,17 @@ export default function Chat({ session, onDisconnect }: Props) {
         onDisconnect={handleDisconnect}
       />
 
-      <SidebarInset className="overflow-hidden flex flex-row">
-        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-          {activeChannel ? (
-            <>
-              <header className="flex items-center gap-2 border-b px-4 h-12 shrink-0 select-none">
-                <span className="text-muted-foreground">#</span>
-                <span className="font-semibold text-sm">{activeChannel.name}</span>
-              </header>
+      <SidebarInset className="overflow-hidden flex flex-col">
+        {activeChannel && (
+          <header className="flex items-center gap-2 border-b px-4 h-12 shrink-0 select-none">
+            <span className="text-muted-foreground">#</span>
+            <span className="font-semibold text-sm">{activeChannel.name}</span>
+          </header>
+        )}
 
+        <div className="flex flex-row flex-1 min-h-0 overflow-hidden">
+          {activeChannel ? (
+            <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
               <MessageList
                 messages={messages}
                 unreadStartIndex={unreadStartIndex}
@@ -191,22 +193,20 @@ export default function Chat({ session, onDisconnect }: Props) {
                 onChange={setInput}
                 onSubmit={sendMessage}
               />
-            </>
+            </div>
           ) : (
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
               Select a channel to start chatting
             </div>
           )}
-        </div>
 
-        {activeChannel && (
           <UserList
             onlineUsers={onlineUsers}
             offlineUsers={offlineUsers}
             currentUsername={username}
             onPoke={handlePoke}
           />
-        )}
+        </div>
       </SidebarInset>
     </SidebarProvider>
   );
