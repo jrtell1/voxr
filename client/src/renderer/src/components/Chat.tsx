@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, FormEvent } from 'react';
 import { Channel as PhxChannel, Presence } from 'phoenix';
 import { disconnect } from '../socket';
+import { getShakeEnabled } from '../lib/storage';
 import type { Session, Channel, Message } from '../types';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import ChatSidebar from './chat/ChatSidebar';
@@ -38,6 +39,7 @@ export default function Chat({ session, onDisconnect }: Props) {
       const name = from_display_name ?? from_username;
       setPokeFrom(name);
       setTimeout(() => setPokeFrom(null), 4000);
+      if (getShakeEnabled()) window.electron?.shake();
     });
 
     const serverChannel = socket.channel('server:lobby');

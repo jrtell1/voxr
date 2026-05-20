@@ -25,6 +25,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { LogOutIcon, SettingsIcon } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { getShakeEnabled, setShakeEnabled } from '@/lib/storage';
 
 interface Props {
   serverName: string;
@@ -53,6 +55,12 @@ export default function ChatSidebar({
   const [newName, setNewName] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [shakeEnabled, setShakeEnabledState] = useState(getShakeEnabled);
+
+  function handleShakeToggle(checked: boolean) {
+    setShakeEnabledState(checked);
+    setShakeEnabled(checked);
+  }
 
   function openSettings() {
     setNewName(displayName ?? username);
@@ -148,6 +156,18 @@ export default function ChatSidebar({
                   autoFocus
                 />
                 <p className="text-xs text-muted-foreground">This is how you appear in chat. Defaults to your username.</p>
+              </div>
+            </section>
+
+            <section className="flex flex-col gap-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Notifications</h3>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="shakeEnabled"
+                  checked={shakeEnabled}
+                  onCheckedChange={(v) => handleShakeToggle(v === true)}
+                />
+                <Label htmlFor="shakeEnabled">Shake window on poke</Label>
               </div>
             </section>
 

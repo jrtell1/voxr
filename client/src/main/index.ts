@@ -35,6 +35,35 @@ ipcMain.on('window:maximize', (e) => {
 });
 ipcMain.on('window:close', (e) => getWindow(e)?.close());
 
+let lastShake = 0;
+
+ipcMain.on('window:shake', (e) => {
+  const now = Date.now();
+  if (now - lastShake < 60_000) return;
+  lastShake = now;
+
+  const win = getWindow(e);
+  if (!win) return;
+
+  const [origX, origY] = win.getPosition();
+  const frames = [
+    [15, 0], [-15, 5], [12, -5], [-12, 5],
+    [10, -3], [-10, 3], [6, -2], [-6, 2],
+    [3, 0], [-3, 0], [0, 0],
+  ];
+
+  let i = 0;
+  const interval = setInterval(() => {
+    if (i >= frames.length) {
+      clearInterval(interval);
+      win.setPosition(origX, origY);
+      return;
+    }
+    const [dx, dy] = frames[i++];
+    win.setPosition(origX + dx, origY + dy);
+  }, 50);
+});
+
 app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {

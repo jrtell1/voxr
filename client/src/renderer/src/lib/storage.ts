@@ -1,6 +1,15 @@
 const SERVERS_KEY = 'voxr_servers';
 const LAST_KEY = 'voxr_last_server';
 const SESSION_KEY = 'voxr_session';
+const SHAKE_KEY = 'voxr_shake_enabled';
+
+export function getShakeEnabled(): boolean {
+  return localStorage.getItem(SHAKE_KEY) !== 'false';
+}
+
+export function setShakeEnabled(enabled: boolean): void {
+  localStorage.setItem(SHAKE_KEY, String(enabled));
+}
 
 interface SavedSession {
   serverUrl: string;

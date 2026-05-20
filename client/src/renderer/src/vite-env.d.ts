@@ -6,5 +6,6 @@ interface Window {
     minimize: () => void;
     maximize: () => void;
     close: () => void;
+    shake: () => void;
   };
 }
