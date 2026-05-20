@@ -45,6 +45,7 @@ export default function Chat({ session, onDisconnect }: Props) {
       const name = from_display_name ?? from_username;
       setPokeFrom(name);
       setTimeout(() => setPokeFrom(null), 4000);
+      playPokeSound();
       if (getShakeEnabled()) window.electron?.shake();
     });
 
@@ -314,4 +315,24 @@ export default function Chat({ session, onDisconnect }: Props) {
       </SidebarInset>
     </SidebarProvider>
   );
+}
+
+function playPokeSound() {
+  const ctx = new AudioContext();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(880, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.15);
+
+  gain.gain.setValueAtTime(0.4, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+
+  osc.start(ctx.currentTime);
+  osc.stop(ctx.currentTime + 0.35);
+  osc.onended = () => ctx.close();
 }
