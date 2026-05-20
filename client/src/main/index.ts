@@ -8,7 +8,7 @@ function createWindow() {
     minWidth: 800,
     minHeight: 600,
     backgroundColor: '#333333',
-    frame: false,
+    frame: true,
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import Connect from './components/Connect';
 import Chat from './components/Chat';
-import TitleBar from './components/TitleBar';
+// import TitleBar from './components/TitleBar';
 import type { Session } from './types';
 import { createSession } from './lib/session';
 import { getLastServer } from './lib/storage';
@@ -23,7 +23,7 @@ export default function App() {
 
   return (
     <>
-      <TitleBar />
+      {/*<TitleBar />*/}
       {autoConnecting ? (
         <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
           Connecting…
