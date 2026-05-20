@@ -5,10 +5,16 @@ defmodule VoxrWeb.UserSocket do
   channel "user:me", VoxrWeb.UserChannel
 
   @impl true
-  def connect(%{"username" => username}, socket, _connect_info) do
-    case Voxr.Accounts.find_or_create_user(username) do
-      {:ok, user} -> {:ok, assign(socket, :current_user, user)}
-      {:error, _} -> :error
+  def connect(%{"token" => token}, socket, _connect_info) do
+    case Phoenix.Token.verify(VoxrWeb.Endpoint, "user auth", token, max_age: 86_400) do
+      {:ok, user_id} ->
+        case Voxr.Accounts.get_user(user_id) do
+          nil -> :error
+          user -> {:ok, assign(socket, :current_user, user)}
+        end
+
+      {:error, _} ->
+        :error
     end
   end
 

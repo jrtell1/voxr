@@ -5,6 +5,8 @@ defmodule Voxr.Accounts.User do
   schema "users" do
     field :username, :string
     field :display_name, :string
+    field :password_hash, :string
+    field :password, :string, virtual: true
 
     has_many :messages, Voxr.Chat.Message
 
@@ -13,12 +15,14 @@ defmodule Voxr.Accounts.User do
 
   def changeset(user, attrs) do
     user
-    |> cast(attrs, [:username, :display_name])
-    |> validate_required([:username])
+    |> cast(attrs, [:username, :display_name, :password])
+    |> validate_required([:username, :password])
     |> validate_length(:username, min: 2, max: 32)
     |> validate_format(:username, ~r/^[a-zA-Z0-9_]+$/)
+    |> validate_length(:password, min: 6)
     |> unique_constraint(:username)
     |> put_display_name()
+    |> hash_password()
   end
 
   defp put_display_name(%{changes: %{username: u}} = changeset) do
@@ -30,4 +34,10 @@ defmodule Voxr.Accounts.User do
   end
 
   defp put_display_name(changeset), do: changeset
+
+  defp hash_password(%{valid?: true, changes: %{password: pw}} = changeset) do
+    put_change(changeset, :password_hash, Pbkdf2.hash_pwd_salt(pw))
+  end
+
+  defp hash_password(changeset), do: changeset
 end

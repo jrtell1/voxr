@@ -2,11 +2,11 @@ import { Socket } from 'phoenix';
 
 let socket: Socket | null = null;
 
-export function connect(serverUrl: string, username: string): Socket {
+export function connect(serverUrl: string, token: string): Socket {
   if (socket) socket.disconnect();
 
   socket = new Socket(`${serverUrl}/socket`, {
-    params: { username },
+    params: { token },
   });
 
   socket.connect();

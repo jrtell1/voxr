@@ -8,6 +8,7 @@ defmodule VoxrWeb.Router do
   scope "/api", VoxrWeb do
     pipe_through :api
 
+    post "/login", AuthController, :login
     get "/info", ServerController, :info
     get "/channels", ChannelController, :index
     get "/channels/:id/messages", MessageController, :index

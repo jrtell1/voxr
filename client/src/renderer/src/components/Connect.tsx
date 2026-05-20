@@ -15,6 +15,7 @@ export default function Connect({ onConnect }: Props) {
   const last = getLastServer();
   const [serverUrl, setServerUrl] = useState(last?.serverUrl ?? 'http://localhost:4000');
   const [username, setUsername] = useState(last?.username ?? '');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -24,7 +25,7 @@ export default function Connect({ onConnect }: Props) {
     setLoading(true);
 
     try {
-      const session = await createSession(serverUrl, username);
+      const session = await createSession(serverUrl, username, password);
       saveServer(serverUrl, username);
       onConnect(session);
     } catch (err) {
@@ -64,6 +65,17 @@ export default function Connect({ onConnect }: Props) {
                 required
                 minLength={2}
                 maxLength={32}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
               />
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
