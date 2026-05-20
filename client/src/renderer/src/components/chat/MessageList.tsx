@@ -44,7 +44,7 @@ export default function MessageList({ messages, unreadStartIndex, messagesEndRef
                   </UserPopover>
                   <span className="text-xs text-muted-foreground">{formatTime(msg.inserted_at)}</span>
                 </div>
-                <p className="text-sm leading-relaxed">{msg.content}</p>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
               </div>
             </div>
           </div>

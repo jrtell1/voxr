@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, FormEvent } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Channel as PhxChannel, Presence } from 'phoenix';
 import { disconnect } from '../socket';
 import { getShakeEnabled, saveLastChannel, getLastChannel } from '../lib/storage';
@@ -121,8 +121,7 @@ export default function Chat({ session, onDisconnect }: Props) {
     }
   }
 
-  function sendMessage(e: FormEvent) {
-    e.preventDefault();
+  function sendMessage() {
     const content = input.trim();
     if (!content || !channelRef.current) return;
     channelRef.current.push('send_message', { content });
