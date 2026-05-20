@@ -30,6 +30,7 @@ export default function Chat({ session, onDisconnect }: Props) {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const dividerRef = useRef<HTMLDivElement | null>(null);
   const scrollToUnread = useRef(false);
+  const lastPokeSoundRef = useRef(0);
 
   useEffect(() => {
     userChannel.on('unread_updated', ({ channel_id, count }: { channel_id: number; count: number }) => {
@@ -45,7 +46,11 @@ export default function Chat({ session, onDisconnect }: Props) {
       const name = from_display_name ?? from_username;
       setPokeFrom(name);
       setTimeout(() => setPokeFrom(null), 4000);
-      playPokeSound();
+      const now = Date.now();
+      if (now - lastPokeSoundRef.current >= 60_000) {
+        lastPokeSoundRef.current = now;
+        playPokeSound();
+      }
       if (getShakeEnabled()) window.electron?.shake();
     });
 
@@ -326,8 +331,8 @@ function playPokeSound() {
   gain.connect(ctx.destination);
 
   osc.type = 'sine';
-  osc.frequency.setValueAtTime(880, ctx.currentTime);
-  osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.15);
+  osc.frequency.setValueAtTime(440, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(220, ctx.currentTime + 0.15);
 
   gain.gain.setValueAtTime(0.4, ctx.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
