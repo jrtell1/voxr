@@ -21,6 +21,17 @@ defmodule Voxr.Accounts do
     |> Repo.insert()
   end
 
+  def update_display_name(user_id, display_name) do
+    case get_user(user_id) do
+      nil -> {:error, :not_found}
+      user ->
+        user
+        |> Ecto.Changeset.change(display_name: display_name)
+        |> Ecto.Changeset.validate_length(:display_name, min: 1, max: 50)
+        |> Repo.update()
+    end
+  end
+
   def list_users do
     Repo.all(User)
   end

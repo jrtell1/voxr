@@ -17,11 +17,11 @@ export async function createSession(serverUrl: string, username: string): Promis
     const userChannel = socket.channel('user:me');
     userChannel
       .join()
-      .receive('ok', ({ unread_counts }: { unread_counts: Record<number, number> }) => {
-        resolve({ socket, userChannel, serverUrl, serverName: info.name, username: username.trim(), channels, initialUnread: unread_counts });
+      .receive('ok', ({ unread_counts, display_name }: { unread_counts: Record<number, number>; display_name: string | null }) => {
+        resolve({ socket, userChannel, serverUrl, serverName: info.name, username: username.trim(), displayName: display_name, channels, initialUnread: unread_counts });
       })
       .receive('error', () => {
-        resolve({ socket, userChannel, serverUrl, serverName: info.name, username: username.trim(), channels, initialUnread: {} });
+        resolve({ socket, userChannel, serverUrl, serverName: info.name, username: username.trim(), displayName: null, channels, initialUnread: {} });
       });
   });
 }

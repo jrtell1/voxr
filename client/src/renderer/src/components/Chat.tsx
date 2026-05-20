@@ -18,6 +18,7 @@ export default function Chat({ session, onDisconnect }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [unread, setUnread] = useState<Record<number, number>>(initialUnread);
+  const [displayName, setDisplayName] = useState<string | null>(session.displayName);
   const [unreadStartIndex, setUnreadStartIndex] = useState<number | null>(null);
   const channelRef = useRef<PhxChannel | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -92,6 +93,15 @@ export default function Chat({ session, onDisconnect }: Props) {
     setInput('');
   }
 
+  function handleDisplayNameChange(name: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      userChannel
+        .push('update_display_name', { display_name: name })
+        .receive('ok', () => { setDisplayName(name); resolve(); })
+        .receive('error', () => reject(new Error('Failed to update display name')));
+    });
+  }
+
   function handleDisconnect() {
     disconnect();
     onDisconnect();
@@ -102,10 +112,12 @@ export default function Chat({ session, onDisconnect }: Props) {
       <ChatSidebar
         serverName={serverName}
         username={username}
+        displayName={displayName}
         channels={channels}
         unread={unread}
         activeChannelId={activeChannel?.id}
         onJoinChannel={joinChannel}
+        onDisplayNameChange={handleDisplayNameChange}
         onDisconnect={handleDisconnect}
       />
 

@@ -25,6 +25,7 @@ export interface Session {
   serverUrl: string;
   serverName: string;
   username: string;
+  displayName: string | null;
   channels: Channel[];
   initialUnread: Record<number, number>;
 }
