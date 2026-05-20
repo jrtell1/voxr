@@ -23,6 +23,7 @@ export default function Chat({ session, onDisconnect }: Props) {
   const [unreadStartIndex, setUnreadStartIndex] = useState<number | null>(null);
   const [presences, setPresences] = useState<Record<string, { metas: { username: string; display_name: string | null }[] }>>({});
   const [allUsers, setAllUsers] = useState<PresenceUser[]>([]);
+  const [pokeFrom, setPokeFrom] = useState<string | null>(null);
   const channelRef = useRef<PhxChannel | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const dividerRef = useRef<HTMLDivElement | null>(null);
@@ -31,6 +32,12 @@ export default function Chat({ session, onDisconnect }: Props) {
   useEffect(() => {
     userChannel.on('unread_updated', ({ channel_id, count }: { channel_id: number; count: number }) => {
       setUnread((prev) => ({ ...prev, [channel_id]: count }));
+    });
+
+    userChannel.on('poke', ({ from_display_name, from_username }: { from_id: number; from_username: string; from_display_name: string | null }) => {
+      const name = from_display_name ?? from_username;
+      setPokeFrom(name);
+      setTimeout(() => setPokeFrom(null), 4000);
     });
 
     const serverChannel = socket.channel('server:lobby');
@@ -44,6 +51,7 @@ export default function Chat({ session, onDisconnect }: Props) {
 
     return () => {
       userChannel.off('unread_updated');
+      userChannel.off('poke');
       serverChannel.leave();
     };
   }, [socket, userChannel]);
@@ -67,7 +75,7 @@ export default function Chat({ session, onDisconnect }: Props) {
           const unreadCount = unread[channel.id] ?? 0;
           setMessages(history);
           setActiveChannel(channel);
-          setAllUsers(users.map((u) => ({ id: String(u.id), username: u.username, displayName: u.display_name })));
+          setAllUsers(users.map((u) => ({ id: String(u.id), userId: u.id, username: u.username, displayName: u.display_name })));
           setUnread((prev) => ({ ...prev, [channel.id]: 0 }));
           if (unreadCount > 0 && history.length > 0) {
             setUnreadStartIndex(Math.max(0, history.length - unreadCount));
@@ -126,15 +134,25 @@ export default function Chat({ session, onDisconnect }: Props) {
 
   const onlineUsers: PresenceUser[] = Object.entries(presences).map(([id, { metas }]) => ({
     id,
+    userId: parseInt(id, 10),
     username: metas[0].username,
     displayName: metas[0].display_name,
   }));
+
+  function handlePoke(userId: number) {
+    userChannel.push('poke', { user_id: userId });
+  }
 
   const onlineIds = new Set(onlineUsers.map((u) => u.id));
   const offlineUsers = allUsers.filter((u) => !onlineIds.has(u.id));
 
   return (
-    <SidebarProvider className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
+    <SidebarProvider className="flex-1 overflow-hidden relative" style={{ minHeight: 0 }}>
+      {pokeFrom && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-card border rounded-lg px-4 py-2.5 shadow-lg text-sm animate-in fade-in slide-in-from-top-2">
+          👉 <span className="font-semibold">{pokeFrom}</span> poked you!
+        </div>
+      )}
       <ChatSidebar
         serverName={serverName}
         username={username}
@@ -161,6 +179,8 @@ export default function Chat({ session, onDisconnect }: Props) {
                 unreadStartIndex={unreadStartIndex}
                 messagesEndRef={messagesEndRef}
                 dividerRef={dividerRef}
+                currentUsername={username}
+                onPoke={handlePoke}
               />
 
               <MessageInput
@@ -177,7 +197,14 @@ export default function Chat({ session, onDisconnect }: Props) {
           )}
         </div>
 
-        {activeChannel && <UserList onlineUsers={onlineUsers} offlineUsers={offlineUsers} />}
+        {activeChannel && (
+          <UserList
+            onlineUsers={onlineUsers}
+            offlineUsers={offlineUsers}
+            currentUsername={username}
+            onPoke={handlePoke}
+          />
+        )}
       </SidebarInset>
     </SidebarProvider>
   );

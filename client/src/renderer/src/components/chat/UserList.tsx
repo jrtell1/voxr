@@ -1,7 +1,9 @@
-import { Avatar, AvatarBadge, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import UserPopover from './UserPopover';
 
 export interface PresenceUser {
   id: string;
+  userId: number;
   username: string;
   displayName: string | null;
 }
@@ -9,31 +11,37 @@ export interface PresenceUser {
 interface Props {
   onlineUsers: PresenceUser[];
   offlineUsers: PresenceUser[];
+  currentUsername: string;
+  onPoke: (userId: number) => void;
 }
 
-function UserRow({ user, online }: { user: PresenceUser; online: boolean }) {
+function UserRow({ user, online, currentUsername, onPoke }: { user: PresenceUser; online: boolean; currentUsername: string; onPoke: (userId: number) => void }) {
   const visibleName = user.displayName ?? user.username;
+  const isSelf = user.username === currentUsername;
+
   return (
-    <div className="flex items-center gap-2 px-1 py-1 rounded-md">
-      <div className="relative shrink-0">
-        <Avatar size="sm" className={online ? '' : 'opacity-40'}>
-          <AvatarFallback>{visibleName[0].toUpperCase()}</AvatarFallback>
+    <UserPopover userId={user.userId} username={user.username} displayName={user.displayName} isSelf={isSelf} onPoke={onPoke}>
+      <button className="flex items-center gap-2 px-1 py-1 rounded-md w-full hover:bg-accent text-left cursor-pointer no-drag-region">
+        <div className="relative shrink-0">
+          <Avatar size="sm" className={online ? '' : 'opacity-40'}>
+            <AvatarFallback>{visibleName[0].toUpperCase()}</AvatarFallback>
+          </Avatar>
           {online && (
-            <AvatarBadge className="bg-green-600" />
+            <span className="absolute bottom-0 right-0 size-2 rounded-full bg-green-500 ring-1 ring-background" />
           )}
-        </Avatar>
-      </div>
-      <div className={`flex flex-col min-w-0 ${online ? '' : 'opacity-40'}`}>
-        <span className="text-sm truncate">{visibleName}</span>
-        {user.displayName && user.displayName !== user.username && (
-          <span className="text-xs text-muted-foreground truncate">@{user.username}</span>
-        )}
-      </div>
-    </div>
+        </div>
+        <div className={`flex flex-col min-w-0 ${online ? '' : 'opacity-40'}`}>
+          <span className="text-sm truncate">{visibleName}</span>
+          {user.displayName && user.displayName !== user.username && (
+            <span className="text-xs text-muted-foreground truncate">@{user.username}</span>
+          )}
+        </div>
+      </button>
+    </UserPopover>
   );
 }
 
-export default function UserList({ onlineUsers, offlineUsers }: Props) {
+export default function UserList({ onlineUsers, offlineUsers, currentUsername, onPoke }: Props) {
   return (
     <aside className="w-48 border-l flex flex-col shrink-0 overflow-y-auto">
       <div className="px-3 py-2 h-12 flex items-center border-b shrink-0">
@@ -49,7 +57,7 @@ export default function UserList({ onlineUsers, offlineUsers }: Props) {
               Online — {onlineUsers.length}
             </p>
             {onlineUsers.map((user) => (
-              <UserRow key={user.id} user={user} online />
+              <UserRow key={user.id} user={user} online currentUsername={currentUsername} onPoke={onPoke} />
             ))}
           </>
         )}
@@ -60,7 +68,7 @@ export default function UserList({ onlineUsers, offlineUsers }: Props) {
               Offline — {offlineUsers.length}
             </p>
             {offlineUsers.map((user) => (
-              <UserRow key={user.id} user={user} online={false} />
+              <UserRow key={user.id} user={user} online={false} currentUsername={currentUsername} onPoke={onPoke} />
             ))}
           </>
         )}

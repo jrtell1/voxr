@@ -23,8 +23,27 @@ defmodule VoxrWeb.UserChannel do
   end
 
   @impl true
+  def handle_in("poke", %{"user_id" => target_id}, socket) do
+    poker = socket.assigns.current_user
+
+    Phoenix.PubSub.broadcast(Voxr.PubSub, "user:#{target_id}", {:poke, %{
+      from_id: poker.id,
+      from_username: poker.username,
+      from_display_name: poker.display_name
+    }})
+
+    {:reply, :ok, socket}
+  end
+
+  @impl true
   def handle_info({:unread_updated, channel_id, count}, socket) do
     push(socket, "unread_updated", %{channel_id: channel_id, count: count})
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:poke, data}, socket) do
+    push(socket, "poke", data)
     {:noreply, socket}
   end
 end
