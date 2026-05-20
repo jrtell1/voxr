@@ -1,37 +1,47 @@
 import { useState, useEffect } from 'react';
 import Connect from './components/Connect';
 import Chat from './components/Chat';
-// import TitleBar from './components/TitleBar';
 import type { Session } from './types';
-import { createSession } from './lib/session';
-import { getLastServer } from './lib/storage';
+import { resumeSession } from './lib/session';
+import { getSavedSession, saveSession, clearSavedSession } from './lib/storage';
 import './App.css';
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
-  const [autoConnecting, setAutoConnecting] = useState(() => getLastServer() !== null);
+  const [autoConnecting, setAutoConnecting] = useState(() => getSavedSession() !== null);
 
   useEffect(() => {
-    const last = getLastServer();
-    if (!last) return;
+    const saved = getSavedSession();
+    if (!saved) return;
 
-    createSession(last.serverUrl, last.username)
-      .then(setSession)
-      .catch(() => {})
+    resumeSession(saved.serverUrl, saved.username, saved.token)
+      .then(handleConnect)
+      .catch(() => {
+        clearSavedSession();
+      })
       .finally(() => setAutoConnecting(false));
   }, []);
 
+  function handleConnect(s: Session) {
+    saveSession(s.serverUrl, s.username, s.token);
+    setSession(s);
+  }
+
+  function handleDisconnect() {
+    clearSavedSession();
+    setSession(null);
+  }
+
   return (
     <>
-      {/*<TitleBar />*/}
       {autoConnecting ? (
         <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
           Connecting…
         </div>
       ) : session ? (
-        <Chat session={session} onDisconnect={() => setSession(null)} />
+        <Chat session={session} onDisconnect={handleDisconnect} />
       ) : (
-        <Connect onConnect={setSession} />
+        <Connect onConnect={handleConnect} />
       )}
     </>
   );

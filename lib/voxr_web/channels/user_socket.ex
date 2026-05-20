@@ -6,7 +6,7 @@ defmodule VoxrWeb.UserSocket do
 
   @impl true
   def connect(%{"token" => token}, socket, _connect_info) do
-    case Phoenix.Token.verify(VoxrWeb.Endpoint, "user auth", token, max_age: 86_400) do
+    case Phoenix.Token.verify(VoxrWeb.Endpoint, "user auth", token, max_age: 604_800) do
       {:ok, user_id} ->
         case Voxr.Accounts.get_user(user_id) do
           nil -> :error

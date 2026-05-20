@@ -27,6 +27,34 @@ export async function createSession(
   const channels = await channelsRes.json();
   const { token } = await authRes.json();
 
+  return connectSocket(serverUrl, username.trim(), channels, info.name, token);
+}
+
+export async function resumeSession(
+  serverUrl: string,
+  username: string,
+  token: string,
+): Promise<Session> {
+  const [infoRes, channelsRes] = await Promise.all([
+    fetch(`${serverUrl}/api/info`),
+    fetch(`${serverUrl}/api/channels`),
+  ]);
+
+  if (!infoRes.ok) throw new Error('Server unreachable');
+
+  const info: { name: string } = await infoRes.json();
+  const channels = await channelsRes.json();
+
+  return connectSocket(serverUrl, username, channels, info.name, token);
+}
+
+function connectSocket(
+  serverUrl: string,
+  username: string,
+  channels: Session['channels'],
+  serverName: string,
+  token: string,
+): Promise<Session> {
   const socket = connect(serverUrl.replace(/^http/, 'ws'), token);
 
   return new Promise((resolve, reject) => {
@@ -34,7 +62,7 @@ export async function createSession(
     userChannel
       .join()
       .receive('ok', ({ unread_counts, display_name }: { unread_counts: Record<number, number>; display_name: string | null }) => {
-        resolve({ socket, userChannel, serverUrl, serverName: info.name, username: username.trim(), displayName: display_name, channels, initialUnread: unread_counts });
+        resolve({ socket, userChannel, serverUrl, serverName, username, displayName: display_name, channels, initialUnread: unread_counts, token });
       })
       .receive('error', () => {
         socket.disconnect();

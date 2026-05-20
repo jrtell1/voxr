@@ -28,4 +28,5 @@ export interface Session {
   displayName: string | null;
   channels: Channel[];
   initialUnread: Record<number, number>;
+  token: string;
 }

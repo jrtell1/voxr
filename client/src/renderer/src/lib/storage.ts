@@ -1,5 +1,29 @@
 const SERVERS_KEY = 'voxr_servers';
 const LAST_KEY = 'voxr_last_server';
+const SESSION_KEY = 'voxr_session';
+
+interface SavedSession {
+  serverUrl: string;
+  username: string;
+  token: string;
+}
+
+export function saveSession(serverUrl: string, username: string, token: string): void {
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ serverUrl, username, token }));
+}
+
+export function getSavedSession(): SavedSession | null {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearSavedSession(): void {
+  localStorage.removeItem(SESSION_KEY);
+}
 
 export interface SavedServer {
   serverUrl: string;
