@@ -206,7 +206,7 @@ export default function ChatSidebar({
             <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-between">
               <Button type="button" variant="destructive" onClick={onDisconnect}>
                 <LogOutIcon className="size-3.5" />
-                Disconnect from server
+                Logout
               </Button>
               <div className="flex gap-2">
                 <Button type="button" variant="outline" onClick={() => setSettingsOpen(false)}>
