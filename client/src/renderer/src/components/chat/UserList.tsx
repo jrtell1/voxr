@@ -1,4 +1,4 @@
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarBadge, AvatarFallback } from '@/components/ui/avatar';
 
 export interface PresenceUser {
   id: string;
@@ -18,10 +18,10 @@ function UserRow({ user, online }: { user: PresenceUser; online: boolean }) {
       <div className="relative shrink-0">
         <Avatar size="sm" className={online ? '' : 'opacity-40'}>
           <AvatarFallback>{visibleName[0].toUpperCase()}</AvatarFallback>
+          {online && (
+            <AvatarBadge className="bg-green-600" />
+          )}
         </Avatar>
-        {online && (
-          <span className="absolute bottom-0 right-0 size-2 rounded-full bg-green-500 ring-1 ring-background" />
-        )}
       </div>
       <div className={`flex flex-col min-w-0 ${online ? '' : 'opacity-40'}`}>
         <span className="text-sm truncate">{visibleName}</span>
