@@ -14,6 +14,7 @@ defmodule Voxr.Application do
        repos: Application.fetch_env!(:voxr, :ecto_repos), skip: skip_migrations?()},
       {DNSCluster, query: Application.get_env(:voxr, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Voxr.PubSub},
+      VoxrWeb.Presence,
       # Start a worker by calling: Voxr.Worker.start_link(arg)
       # {Voxr.Worker, arg},
       # Start to serve requests, typically the last entry

@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, FormEvent } from 'react';
-import { Channel as PhxChannel } from 'phoenix';
+import { Channel as PhxChannel, Presence } from 'phoenix';
 import { disconnect } from '../socket';
 import type { Session, Channel, Message } from '../types';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import ChatSidebar from './chat/ChatSidebar';
 import MessageList from './chat/MessageList';
 import MessageInput from './chat/MessageInput';
+import UserList, { type PresenceUser } from './chat/UserList';
 
 interface Props {
   session: Session;
@@ -20,6 +21,7 @@ export default function Chat({ session, onDisconnect }: Props) {
   const [unread, setUnread] = useState<Record<number, number>>(initialUnread);
   const [displayName, setDisplayName] = useState<string | null>(session.displayName);
   const [unreadStartIndex, setUnreadStartIndex] = useState<number | null>(null);
+  const [presences, setPresences] = useState<Record<string, { metas: { username: string; display_name: string | null }[] }>>({});
   const channelRef = useRef<PhxChannel | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const dividerRef = useRef<HTMLDivElement | null>(null);
@@ -71,6 +73,14 @@ export default function Chat({ session, onDisconnect }: Props) {
         setUnread((prev) => ({ ...prev, [channel_id]: count }));
       });
 
+      phxChannel.on('presence_state', (state) => {
+        setPresences(Presence.syncState({}, state));
+      });
+
+      phxChannel.on('presence_diff', (diff) => {
+        setPresences((prev) => Presence.syncDiff(prev, diff));
+      });
+
       channelRef.current = phxChannel;
     };
 
@@ -79,6 +89,9 @@ export default function Chat({ session, onDisconnect }: Props) {
       channelRef.current = null;
       old.off('new_message');
       old.off('unread_updated');
+      old.off('presence_state');
+      old.off('presence_diff');
+      setPresences({});
       old.leave().receive('ok', doJoin);
     } else {
       doJoin();
@@ -107,6 +120,12 @@ export default function Chat({ session, onDisconnect }: Props) {
     onDisconnect();
   }
 
+  const userList: PresenceUser[] = Object.entries(presences).map(([id, { metas }]) => ({
+    id,
+    username: metas[0].username,
+    displayName: metas[0].display_name,
+  }));
+
   return (
     <SidebarProvider className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
       <ChatSidebar
@@ -121,33 +140,37 @@ export default function Chat({ session, onDisconnect }: Props) {
         onDisconnect={handleDisconnect}
       />
 
-      <SidebarInset className="overflow-hidden">
-        {activeChannel ? (
-          <>
-            <header className="flex items-center gap-2 border-b px-4 h-12 shrink-0 select-none">
-              <span className="text-muted-foreground">#</span>
-              <span className="font-semibold text-sm">{activeChannel.name}</span>
-            </header>
+      <SidebarInset className="overflow-hidden flex flex-row">
+        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+          {activeChannel ? (
+            <>
+              <header className="flex items-center gap-2 border-b px-4 h-12 shrink-0 select-none">
+                <span className="text-muted-foreground">#</span>
+                <span className="font-semibold text-sm">{activeChannel.name}</span>
+              </header>
 
-            <MessageList
-              messages={messages}
-              unreadStartIndex={unreadStartIndex}
-              messagesEndRef={messagesEndRef}
-              dividerRef={dividerRef}
-            />
+              <MessageList
+                messages={messages}
+                unreadStartIndex={unreadStartIndex}
+                messagesEndRef={messagesEndRef}
+                dividerRef={dividerRef}
+              />
 
-            <MessageInput
-              value={input}
-              channelName={activeChannel.name}
-              onChange={setInput}
-              onSubmit={sendMessage}
-            />
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-muted-foreground">
-            Select a channel to start chatting
-          </div>
-        )}
+              <MessageInput
+                value={input}
+                channelName={activeChannel.name}
+                onChange={setInput}
+                onSubmit={sendMessage}
+              />
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-muted-foreground">
+              Select a channel to start chatting
+            </div>
+          )}
+        </div>
+
+        {activeChannel && <UserList users={userList} />}
       </SidebarInset>
     </SidebarProvider>
   );
