@@ -7,10 +7,12 @@ interface Props {
   label: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
+  onTyping?: () => void;
 }
 
-export default function MessageInput({ value, label, onChange, onSubmit }: Props) {
+export default function MessageInput({ value, label, onChange, onSubmit, onTyping }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  const lastTypingRef = useRef(0);
 
   useEffect(() => {
     const el = ref.current;
@@ -21,6 +23,13 @@ export default function MessageInput({ value, label, onChange, onSubmit }: Props
 
   function handleChange(e: ChangeEvent<HTMLTextAreaElement>) {
     onChange(e.target.value);
+    if (e.target.value && onTyping) {
+      const now = Date.now();
+      if (now - lastTypingRef.current > 2000) {
+        lastTypingRef.current = now;
+        onTyping();
+      }
+    }
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {

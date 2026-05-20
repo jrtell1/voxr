@@ -37,6 +37,18 @@ defmodule VoxrWeb.RoomChannel do
   end
 
   @impl true
+  def handle_in("typing", _params, socket) do
+    user = socket.assigns.current_user
+
+    broadcast_from!(socket, "typing", %{
+      user_id: user.id,
+      name: user.display_name || user.username
+    })
+
+    {:noreply, socket}
+  end
+
+  @impl true
   def handle_in("send_message", %{"content" => content}, socket) do
     user = socket.assigns.current_user
     channel_id = socket.assigns.channel_id

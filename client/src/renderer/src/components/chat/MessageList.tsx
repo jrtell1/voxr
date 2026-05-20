@@ -15,7 +15,7 @@ interface Props {
 
 export default function MessageList({ messages, unreadStartIndex, messagesEndRef, dividerRef, currentUsername, onPoke, onOpenDm }: Props) {
   return (
-    <div className="flex-1 overflow-y-auto py-4 px-1 flex flex-col gap-0.5 select-text">
+    <div className="flex-1 overflow-y-auto pt-4 px-1 flex flex-col gap-0.5 select-text">
       {messages.map((msg, i) => {
         const visibleName = msg.user.display_name ?? msg.user.username;
         const isSelf = msg.user.username === currentUsername;

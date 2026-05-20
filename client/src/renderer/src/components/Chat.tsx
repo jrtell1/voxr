@@ -7,6 +7,7 @@ import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import ChatSidebar from './chat/ChatSidebar';
 import MessageList from './chat/MessageList';
 import MessageInput from './chat/MessageInput';
+import TypingIndicator from './chat/TypingIndicator';
 import UserList, { type PresenceUser } from './chat/UserList';
 
 interface Props {
@@ -31,6 +32,8 @@ export default function Chat({ session, onDisconnect }: Props) {
   const dividerRef = useRef<HTMLDivElement | null>(null);
   const scrollToUnread = useRef(false);
   const lastPokeSoundRef = useRef(0);
+  const [typingUsers, setTypingUsers] = useState<Map<number, string>>(new Map());
+  const typingTimeoutsRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
 
   useEffect(() => {
     userChannel.on('unread_updated', ({ channel_id, count }: { channel_id: number; count: number }) => {
@@ -105,6 +108,25 @@ export default function Chat({ session, onDisconnect }: Props) {
         setUnread((prev) => ({ ...prev, [channel_id]: count }));
       });
 
+      phxChannel.on('typing', ({ user_id, name }: { user_id: number; name: string }) => {
+        const timeouts = typingTimeoutsRef.current;
+        const existing = timeouts.get(user_id);
+        if (existing) clearTimeout(existing);
+
+        setTypingUsers((prev) => new Map(prev).set(user_id, name));
+
+        const timeout = setTimeout(() => {
+          setTypingUsers((prev) => {
+            const next = new Map(prev);
+            next.delete(user_id);
+            return next;
+          });
+          timeouts.delete(user_id);
+        }, 3000);
+
+        timeouts.set(user_id, timeout);
+      });
+
       channelRef.current = phxChannel;
     };
 
@@ -113,6 +135,10 @@ export default function Chat({ session, onDisconnect }: Props) {
       channelRef.current = null;
       old.off('new_message');
       old.off('unread_updated');
+      old.off('typing');
+      typingTimeoutsRef.current.forEach(clearTimeout);
+      typingTimeoutsRef.current.clear();
+      setTypingUsers(new Map());
       setAllUsers([]);
       old.leave().receive('ok', doJoin);
     } else {
@@ -175,6 +201,10 @@ export default function Chat({ session, onDisconnect }: Props) {
 
     setMessages([]);
     setActiveView({ type: 'pending_dm', targetUser });
+  }
+
+  function sendTyping() {
+    channelRef.current?.push('typing', {});
   }
 
   function sendMessage() {
@@ -295,11 +325,13 @@ export default function Chat({ session, onDisconnect }: Props) {
                 onOpenDm={handleOpenDm}
               />
 
+              <TypingIndicator names={[...typingUsers.values()]} />
               <MessageInput
                 value={input}
                 label={messageLabel}
                 onChange={setInput}
                 onSubmit={sendMessage}
+                onTyping={sendTyping}
               />
             </div>
           ) : (
