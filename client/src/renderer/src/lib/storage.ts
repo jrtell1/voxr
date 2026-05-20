@@ -2,6 +2,7 @@ const SERVERS_KEY = 'voxr_servers';
 const LAST_KEY = 'voxr_last_server';
 const SESSION_KEY = 'voxr_session';
 const SHAKE_KEY = 'voxr_shake_enabled';
+const SOUND_KEY = 'voxr_sound_enabled';
 const LAST_CHANNEL_KEY = 'voxr_last_channel';
 
 export function saveLastChannel(serverUrl: string, channelId: number): void {
@@ -25,6 +26,14 @@ export function getShakeEnabled(): boolean {
 
 export function setShakeEnabled(enabled: boolean): void {
   localStorage.setItem(SHAKE_KEY, String(enabled));
+}
+
+export function getSoundEnabled(): boolean {
+  return localStorage.getItem(SOUND_KEY) !== 'false';
+}
+
+export function setSoundEnabled(enabled: boolean): void {
+  localStorage.setItem(SOUND_KEY, String(enabled));
 }
 
 interface SavedSession {

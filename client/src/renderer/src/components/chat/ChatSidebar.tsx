@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/dialog';
 import { LogOutIcon, SettingsIcon } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
-import { getShakeEnabled, setShakeEnabled } from '@/lib/storage';
+import { getShakeEnabled, setShakeEnabled, getSoundEnabled, setSoundEnabled } from '@/lib/storage';
 
 interface Props {
   serverName: string;
@@ -60,10 +60,16 @@ export default function ChatSidebar({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [shakeEnabled, setShakeEnabledState] = useState(getShakeEnabled);
+  const [soundEnabled, setSoundEnabledState] = useState(getSoundEnabled);
 
   function handleShakeToggle(checked: boolean) {
     setShakeEnabledState(checked);
     setShakeEnabled(checked);
+  }
+
+  function handleSoundToggle(checked: boolean) {
+    setSoundEnabledState(checked);
+    setSoundEnabled(checked);
   }
 
   function openSettings() {
@@ -202,6 +208,14 @@ export default function ChatSidebar({
                   onCheckedChange={(v) => handleShakeToggle(v === true)}
                 />
                 <Label htmlFor="shakeEnabled">Shake window on poke</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="soundEnabled"
+                  checked={soundEnabled}
+                  onCheckedChange={(v) => handleSoundToggle(v === true)}
+                />
+                <Label htmlFor="soundEnabled">Play sound on poke</Label>
               </div>
             </section>
 

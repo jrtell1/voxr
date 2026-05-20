@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Channel as PhxChannel, Presence } from 'phoenix';
 import { disconnect } from '../socket';
-import { getShakeEnabled, saveLastChannel, getLastChannel } from '../lib/storage';
+import { getShakeEnabled, getSoundEnabled, saveLastChannel, getLastChannel } from '../lib/storage';
 import type { Session, Channel, DmChannel, ActiveView, Message, ChatUser } from '../types';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import ChatSidebar from './chat/ChatSidebar';
@@ -50,7 +50,7 @@ export default function Chat({ session, onDisconnect }: Props) {
       const now = Date.now();
       if (now - lastPokeSoundRef.current >= 60_000) {
         lastPokeSoundRef.current = now;
-        playPokeSound();
+        if (getSoundEnabled()) playPokeSound();
       }
       if (getShakeEnabled()) window.electron?.shake();
     });
