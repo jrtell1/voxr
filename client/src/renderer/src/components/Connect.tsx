@@ -13,11 +13,18 @@ interface Props {
 
 export default function Connect({ onConnect }: Props) {
   const last = getLastServer();
+  const [mode, setMode] = useState<'login' | 'register'>('login');
   const [serverUrl, setServerUrl] = useState(last?.serverUrl ?? 'http://localhost:4000');
   const [username, setUsername] = useState(last?.username ?? '');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  function switchMode(next: 'login' | 'register') {
+    setMode(next);
+    setError(null);
+    setPassword('');
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -25,7 +32,7 @@ export default function Connect({ onConnect }: Props) {
     setLoading(true);
 
     try {
-      const session = await createSession(serverUrl, username, password);
+      const session = await createSession(serverUrl, username, password, mode);
       saveServer(serverUrl, username);
       onConnect(session);
     } catch (err) {
@@ -54,6 +61,24 @@ export default function Connect({ onConnect }: Props) {
                 required
               />
             </div>
+
+            <div className="flex rounded-md border overflow-hidden">
+              <button
+                type="button"
+                onClick={() => switchMode('login')}
+                className={`flex-1 py-1.5 text-sm transition-colors ${mode === 'login' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Log in
+              </button>
+              <button
+                type="button"
+                onClick={() => switchMode('register')}
+                className={`flex-1 py-1.5 text-sm transition-colors ${mode === 'register' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Create account
+              </button>
+            </div>
+
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="username">Username</Label>
               <Input
@@ -78,9 +103,11 @@ export default function Connect({ onConnect }: Props) {
                 minLength={6}
               />
             </div>
+
             {error && <p className="text-sm text-destructive">{error}</p>}
+
             <Button type="submit" disabled={loading} className="w-full">
-              {loading ? 'Connecting…' : 'Connect'}
+              {loading ? '…' : mode === 'login' ? 'Log in' : 'Create account'}
             </Button>
           </form>
         </CardContent>

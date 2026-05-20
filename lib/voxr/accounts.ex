@@ -8,10 +8,15 @@ defmodule Voxr.Accounts do
     Repo.get_by(User, username: username)
   end
 
-  def find_or_create_user(username, password) do
+  def register_user(username, password) do
+    create_user(%{username: username, password: password})
+  end
+
+  def authenticate_user(username, password) do
     case get_user_by_username(username) do
       nil ->
-        create_user(%{username: username, password: password})
+        Pbkdf2.no_user_verify()
+        {:error, :not_found}
 
       user ->
         if Pbkdf2.verify_pass(password, user.password_hash) do

@@ -1,11 +1,16 @@
 import { connect } from '../socket';
 import type { Session } from '../types';
 
-export async function createSession(serverUrl: string, username: string, password: string): Promise<Session> {
-  const [infoRes, channelsRes, loginRes] = await Promise.all([
+export async function createSession(
+  serverUrl: string,
+  username: string,
+  password: string,
+  mode: 'login' | 'register',
+): Promise<Session> {
+  const [infoRes, channelsRes, authRes] = await Promise.all([
     fetch(`${serverUrl}/api/info`),
     fetch(`${serverUrl}/api/channels`),
-    fetch(`${serverUrl}/api/login`, {
+    fetch(`${serverUrl}/api/${mode}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: username.trim(), password }),
@@ -13,14 +18,14 @@ export async function createSession(serverUrl: string, username: string, passwor
   ]);
 
   if (!infoRes.ok) throw new Error('Server unreachable');
-  if (!loginRes.ok) {
-    const body = await loginRes.json().catch(() => null);
-    throw new Error(body?.error ?? 'Login failed');
+  if (!authRes.ok) {
+    const body = await authRes.json().catch(() => null);
+    throw new Error(body?.error ?? 'Authentication failed');
   }
 
   const info: { name: string } = await infoRes.json();
   const channels = await channelsRes.json();
-  const { token } = await loginRes.json();
+  const { token } = await authRes.json();
 
   const socket = connect(serverUrl.replace(/^http/, 'ws'), token);
 
