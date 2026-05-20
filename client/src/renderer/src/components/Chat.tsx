@@ -22,6 +22,7 @@ export default function Chat({ session, onDisconnect }: Props) {
   const [displayName, setDisplayName] = useState<string | null>(session.displayName);
   const [unreadStartIndex, setUnreadStartIndex] = useState<number | null>(null);
   const [presences, setPresences] = useState<Record<string, { metas: { username: string; display_name: string | null }[] }>>({});
+  const [allUsers, setAllUsers] = useState<PresenceUser[]>([]);
   const channelRef = useRef<PhxChannel | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const dividerRef = useRef<HTMLDivElement | null>(null);
@@ -50,10 +51,11 @@ export default function Chat({ session, onDisconnect }: Props) {
 
       phxChannel
         .join()
-        .receive('ok', ({ messages: history }: { messages: Message[] }) => {
+        .receive('ok', ({ messages: history, users }: { messages: Message[]; users: { id: number; username: string; display_name: string | null }[] }) => {
           const unreadCount = unread[channel.id] ?? 0;
           setMessages(history);
           setActiveChannel(channel);
+          setAllUsers(users.map((u) => ({ id: String(u.id), username: u.username, displayName: u.display_name })));
           setUnread((prev) => ({ ...prev, [channel.id]: 0 }));
           if (unreadCount > 0 && history.length > 0) {
             setUnreadStartIndex(Math.max(0, history.length - unreadCount));
@@ -92,6 +94,7 @@ export default function Chat({ session, onDisconnect }: Props) {
       old.off('presence_state');
       old.off('presence_diff');
       setPresences({});
+      setAllUsers([]);
       old.leave().receive('ok', doJoin);
     } else {
       doJoin();
@@ -120,11 +123,14 @@ export default function Chat({ session, onDisconnect }: Props) {
     onDisconnect();
   }
 
-  const userList: PresenceUser[] = Object.entries(presences).map(([id, { metas }]) => ({
+  const onlineUsers: PresenceUser[] = Object.entries(presences).map(([id, { metas }]) => ({
     id,
     username: metas[0].username,
     displayName: metas[0].display_name,
   }));
+
+  const onlineIds = new Set(onlineUsers.map((u) => u.id));
+  const offlineUsers = allUsers.filter((u) => !onlineIds.has(u.id));
 
   return (
     <SidebarProvider className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
@@ -170,7 +176,7 @@ export default function Chat({ session, onDisconnect }: Props) {
           )}
         </div>
 
-        {activeChannel && <UserList users={userList} />}
+        {activeChannel && <UserList onlineUsers={onlineUsers} offlineUsers={offlineUsers} />}
       </SidebarInset>
     </SidebarProvider>
   );

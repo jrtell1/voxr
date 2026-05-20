@@ -1,7 +1,7 @@
 defmodule VoxrWeb.RoomChannel do
   use Phoenix.Channel
 
-  alias Voxr.Chat
+  alias Voxr.{Accounts, Chat}
   alias VoxrWeb.Presence
 
   intercept ["presence_diff"]
@@ -19,8 +19,14 @@ defmodule VoxrWeb.RoomChannel do
 
     send(self(), :after_join)
 
+    users = Accounts.list_users()
+
     {:ok,
-     %{channel: serialize_channel(channel), messages: Enum.map(messages, &serialize_message/1)},
+     %{
+       channel: serialize_channel(channel),
+       messages: Enum.map(messages, &serialize_message/1),
+       users: Enum.map(users, &serialize_user/1)
+     },
      assign(socket, :channel_id, channel_id)}
   end
 
@@ -61,6 +67,10 @@ defmodule VoxrWeb.RoomChannel do
       {:ok, _message} -> {:reply, :ok, socket}
       {:error, _changeset} -> {:reply, {:error, %{reason: "invalid message"}}, socket}
     end
+  end
+
+  defp serialize_user(user) do
+    %{id: user.id, username: user.username, display_name: user.display_name}
   end
 
   defp serialize_channel(channel) do
