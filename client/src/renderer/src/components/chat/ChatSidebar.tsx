@@ -120,7 +120,7 @@ export default function ChatSidebar({
 
         <SidebarFooter className="border-t">
           <div className="flex items-center gap-2 px-2 py-1">
-            <Avatar size="sm">
+            <Avatar size="default">
               <AvatarFallback>{visibleName[0].toUpperCase()}</AvatarFallback>
             </Avatar>
             <div className="flex flex-col flex-1 min-w-0">
