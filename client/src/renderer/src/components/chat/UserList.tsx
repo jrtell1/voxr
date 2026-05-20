@@ -1,5 +1,6 @@
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import UserPopover from './UserPopover';
+import type { ChatUser } from '../../types';
 
 export interface PresenceUser {
   id: string;
@@ -13,15 +14,22 @@ interface Props {
   offlineUsers: PresenceUser[];
   currentUsername: string;
   onPoke: (userId: number) => void;
-  onOpenDm: (userId: number) => void;
+  onOpenDm: (user: ChatUser) => void;
 }
 
-function UserRow({ user, online, currentUsername, onPoke, onOpenDm }: { user: PresenceUser; online: boolean; currentUsername: string; onPoke: (userId: number) => void; onOpenDm: (userId: number) => void }) {
+function UserRow({ user, online, currentUsername, onPoke, onOpenDm }: {
+  user: PresenceUser;
+  online: boolean;
+  currentUsername: string;
+  onPoke: (userId: number) => void;
+  onOpenDm: (user: ChatUser) => void;
+}) {
   const visibleName = user.displayName ?? user.username;
   const isSelf = user.username === currentUsername;
+  const chatUser: ChatUser = { id: user.userId, username: user.username, display_name: user.displayName };
 
   return (
-    <UserPopover userId={user.userId} username={user.username} displayName={user.displayName} isSelf={isSelf} onPoke={onPoke} onOpenDm={onOpenDm}>
+    <UserPopover user={chatUser} isSelf={isSelf} onPoke={onPoke} onOpenDm={onOpenDm}>
       <button className="flex items-center gap-2 px-1 py-1 rounded-md w-full hover:bg-accent text-left cursor-pointer no-drag-region">
         <div className="relative shrink-0">
           <Avatar size="default" className={online ? '' : 'opacity-40'}>

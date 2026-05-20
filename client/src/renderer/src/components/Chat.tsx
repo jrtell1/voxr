@@ -36,6 +36,11 @@ export default function Chat({ session, onDisconnect }: Props) {
       setUnread((prev) => ({ ...prev, [channel_id]: count }));
     });
 
+    userChannel.on('dm_channel_opened', ({ channel_id, other_user }: { channel_id: number; other_user: ChatUser }) => {
+      const dmChannel: DmChannel = { id: channel_id, other_user };
+      setDmChannels((prev) => (prev.some((d) => d.id === channel_id) ? prev : [...prev, dmChannel]));
+    });
+
     userChannel.on('poke', ({ from_display_name, from_username }: { from_id: number; from_username: string; from_display_name: string | null }) => {
       const name = from_display_name ?? from_username;
       setPokeFrom(name);
@@ -54,6 +59,7 @@ export default function Chat({ session, onDisconnect }: Props) {
 
     return () => {
       userChannel.off('unread_updated');
+      userChannel.off('dm_channel_opened');
       userChannel.off('poke');
       serverChannel.leave();
     };
@@ -137,19 +143,50 @@ export default function Chat({ session, onDisconnect }: Props) {
     });
   }
 
-  function handleOpenDm(userId: number) {
-    userChannel
-      .push('open_dm', { user_id: userId })
-      .receive('ok', ({ channel_id, other_user }: { channel_id: number; other_user: ChatUser }) => {
-        const dmChannel: DmChannel = { id: channel_id, other_user };
-        setDmChannels((prev) => (prev.some((d) => d.id === channel_id) ? prev : [...prev, dmChannel]));
-        joinDmChannel(dmChannel);
-      });
+  function handleOpenDm(targetUser: ChatUser) {
+    const existing = dmChannels.find((d) => d.other_user.id === targetUser.id);
+    if (existing) {
+      joinDmChannel(existing);
+      return;
+    }
+
+    if (channelRef.current) {
+      const old = channelRef.current;
+      channelRef.current = null;
+      old.off('new_message');
+      old.off('unread_updated');
+      setAllUsers([]);
+      old.leave();
+    }
+
+    setMessages([]);
+    setActiveView({ type: 'pending_dm', targetUser });
   }
 
   function sendMessage() {
     const content = input.trim();
-    if (!content || !channelRef.current) return;
+    if (!content) return;
+
+    if (activeView?.type === 'pending_dm') {
+      const targetUser = activeView.targetUser;
+      setInput('');
+      userChannel
+        .push('open_dm', { user_id: targetUser.id })
+        .receive('ok', ({ channel_id, other_user }: { channel_id: number; other_user: ChatUser }) => {
+          const dmChannel: DmChannel = { id: channel_id, other_user };
+          setDmChannels((prev) => (prev.some((d) => d.id === channel_id) ? prev : [...prev, dmChannel]));
+          switchPhxChannel(`room:${channel_id}`, ({ messages: history }) => {
+            setMessages(history as Message[]);
+            setActiveView({ type: 'dm', dmChannel });
+            setUnreadStartIndex(null);
+            scrollToUnread.current = false;
+            channelRef.current?.push('send_message', { content });
+          });
+        });
+      return;
+    }
+
+    if (!channelRef.current) return;
     channelRef.current.push('send_message', { content });
     setInput('');
   }
@@ -182,12 +219,14 @@ export default function Chat({ session, onDisconnect }: Props) {
   const onlineIds = new Set(onlineUsers.map((u) => u.id));
   const offlineUsers = allUsers.filter((u) => !onlineIds.has(u.id));
 
+  const dmTargetUser =
+    activeView?.type === 'dm' ? activeView.dmChannel.other_user :
+    activeView?.type === 'pending_dm' ? activeView.targetUser : null;
+
   const messageLabel =
-    activeView?.type === 'channel'
-      ? `#${activeView.channel.name}`
-      : activeView?.type === 'dm'
-        ? `@${activeView.dmChannel.other_user.display_name ?? activeView.dmChannel.other_user.username}`
-        : '';
+    activeView?.type === 'channel' ? `#${activeView.channel.name}` :
+    dmTargetUser ? `@${dmTargetUser.display_name ?? dmTargetUser.username}` :
+    '';
 
   return (
     <SidebarProvider className="flex-1 overflow-hidden relative" style={{ minHeight: 0 }}>
@@ -218,14 +257,14 @@ export default function Chat({ session, onDisconnect }: Props) {
                 <span className="text-muted-foreground">#</span>
                 <span className="font-semibold text-sm">{activeView.channel.name}</span>
               </>
-            ) : (
+            ) : dmTargetUser ? (
               <>
                 <span className="text-muted-foreground">@</span>
                 <span className="font-semibold text-sm">
-                  {activeView.dmChannel.other_user.display_name ?? activeView.dmChannel.other_user.username}
+                  {dmTargetUser.display_name ?? dmTargetUser.username}
                 </span>
               </>
-            )}
+            ) : null}
           </header>
         )}
 
@@ -255,13 +294,15 @@ export default function Chat({ session, onDisconnect }: Props) {
             </div>
           )}
 
-          <UserList
-            onlineUsers={onlineUsers}
-            offlineUsers={offlineUsers}
-            currentUsername={username}
-            onPoke={handlePoke}
-            onOpenDm={handleOpenDm}
-          />
+          {activeView?.type !== 'dm' && activeView?.type !== 'pending_dm' && (
+            <UserList
+              onlineUsers={onlineUsers}
+              offlineUsers={offlineUsers}
+              currentUsername={username}
+              onPoke={handlePoke}
+              onOpenDm={handleOpenDm}
+            />
+          )}
         </div>
       </SidebarInset>
     </SidebarProvider>

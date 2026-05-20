@@ -26,7 +26,8 @@ export interface DmChannel {
 
 export type ActiveView =
   | { type: 'channel'; channel: Channel }
-  | { type: 'dm'; dmChannel: DmChannel };
+  | { type: 'dm'; dmChannel: DmChannel }
+  | { type: 'pending_dm'; targetUser: ChatUser };
 
 export interface Session {
   socket: Socket;

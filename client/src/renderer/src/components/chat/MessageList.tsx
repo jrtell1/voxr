@@ -1,5 +1,5 @@
 import type { RefObject } from 'react';
-import type { Message } from '../../types';
+import type { Message, ChatUser } from '../../types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import UserPopover from './UserPopover';
 
@@ -10,7 +10,7 @@ interface Props {
   dividerRef: RefObject<HTMLDivElement | null>;
   currentUsername: string;
   onPoke: (userId: number) => void;
-  onOpenDm: (userId: number) => void;
+  onOpenDm: (user: ChatUser) => void;
 }
 
 export default function MessageList({ messages, unreadStartIndex, messagesEndRef, dividerRef, currentUsername, onPoke, onOpenDm }: Props) {
@@ -29,7 +29,7 @@ export default function MessageList({ messages, unreadStartIndex, messagesEndRef
               </div>
             )}
             <div className="flex gap-3 px-2 py-1 rounded-md hover:bg-muted/40 items-start">
-              <UserPopover userId={msg.user.id} username={msg.user.username} displayName={msg.user.display_name} isSelf={isSelf} onPoke={onPoke} onOpenDm={onOpenDm}>
+              <UserPopover user={msg.user} isSelf={isSelf} onPoke={onPoke} onOpenDm={onOpenDm}>
                 <button className="mt-0.5 shrink-0 cursor-pointer no-drag-region">
                   <Avatar size="default">
                     <AvatarFallback>{visibleName[0].toUpperCase()}</AvatarFallback>
@@ -38,7 +38,7 @@ export default function MessageList({ messages, unreadStartIndex, messagesEndRef
               </UserPopover>
               <div>
                 <div className="flex items-baseline gap-2 mb-0.5">
-                  <UserPopover userId={msg.user.id} username={msg.user.username} displayName={msg.user.display_name} isSelf={isSelf} onPoke={onPoke} onOpenDm={onOpenDm}>
+                  <UserPopover user={msg.user} isSelf={isSelf} onPoke={onPoke} onOpenDm={onOpenDm}>
                     <button className="font-semibold text-sm cursor-pointer hover:underline no-drag-region">
                       {visibleName}
                     </button>

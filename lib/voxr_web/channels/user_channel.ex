@@ -36,6 +36,11 @@ defmodule VoxrWeb.UserChannel do
       {:ok, channel} ->
         other_user = Accounts.get_user(target_id)
 
+        Phoenix.PubSub.broadcast(Voxr.PubSub, "user:#{target_id}", {:dm_channel_opened, %{
+          channel_id: channel.id,
+          other_user: %{id: user.id, username: user.username, display_name: user.display_name}
+        }})
+
         {:reply,
          {:ok,
           %{
@@ -74,6 +79,12 @@ defmodule VoxrWeb.UserChannel do
   @impl true
   def handle_info({:poke, data}, socket) do
     push(socket, "poke", data)
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:dm_channel_opened, data}, socket) do
+    push(socket, "dm_channel_opened", data)
     {:noreply, socket}
   end
 
