@@ -8,8 +8,10 @@ defmodule Voxr.Accounts do
     Repo.get_by(User, username: username)
   end
 
-  def register_user(username, password) do
-    create_user(%{username: username, password: password})
+  def register_user(username, password, display_name \\ nil) do
+    attrs = %{username: username, password: password}
+    attrs = if display_name && display_name != "", do: Map.put(attrs, :display_name, display_name), else: attrs
+    create_user(attrs)
   end
 
   def authenticate_user(username, password) do

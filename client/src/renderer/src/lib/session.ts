@@ -6,14 +6,18 @@ export async function createSession(
   username: string,
   password: string,
   mode: 'login' | 'register',
+  displayName?: string,
 ): Promise<Session> {
+  const body: Record<string, string> = { username: username.trim(), password };
+  if (mode === 'register' && displayName?.trim()) body.display_name = displayName.trim();
+
   const [infoRes, channelsRes, authRes] = await Promise.all([
     fetch(`${serverUrl}/api/info`),
     fetch(`${serverUrl}/api/channels`),
     fetch(`${serverUrl}/api/${mode}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: username.trim(), password }),
+      body: JSON.stringify(body),
     }),
   ]);
 

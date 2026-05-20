@@ -18,8 +18,10 @@ defmodule VoxrWeb.AuthController do
     conn |> put_status(:bad_request) |> json(%{error: "Missing username or password"})
   end
 
-  def register(conn, %{"username" => username, "password" => password}) do
-    case Voxr.Accounts.register_user(username, password) do
+  def register(conn, %{"username" => username, "password" => password} = params) do
+    display_name = Map.get(params, "display_name")
+
+    case Voxr.Accounts.register_user(username, password, display_name) do
       {:ok, user} ->
         conn |> put_status(:created) |> json(%{token: sign_token(user)})
 

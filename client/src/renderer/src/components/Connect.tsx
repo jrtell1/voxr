@@ -16,6 +16,7 @@ export default function Connect({ onConnect }: Props) {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [serverUrl, setServerUrl] = useState(last?.serverUrl ?? 'http://localhost:4000');
   const [username, setUsername] = useState(last?.username ?? '');
+  const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -24,6 +25,7 @@ export default function Connect({ onConnect }: Props) {
     setMode(next);
     setError(null);
     setPassword('');
+    setDisplayName('');
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -32,7 +34,7 @@ export default function Connect({ onConnect }: Props) {
     setLoading(true);
 
     try {
-      const session = await createSession(serverUrl, username, password, mode);
+      const session = await createSession(serverUrl, username, password, mode, displayName);
       saveServer(serverUrl, username);
       onConnect(session);
     } catch (err) {
@@ -92,6 +94,21 @@ export default function Connect({ onConnect }: Props) {
                 maxLength={32}
               />
             </div>
+            {mode === 'register' && (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="displayName">Display Name</Label>
+                <Input
+                  id="displayName"
+                  type="text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder={username || 'How others see you'}
+                  maxLength={50}
+                />
+                <p className="text-xs text-muted-foreground">Visible to others. Defaults to your username.</p>
+              </div>
+            )}
+
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="password">Password</Label>
               <Input
