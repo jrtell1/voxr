@@ -46,6 +46,7 @@ export default function Chat({ session, onDisconnect }: Props) {
       const name = from_display_name ?? from_username;
       setPokeFrom(name);
       setTimeout(() => setPokeFrom(null), 4000);
+      window.electron?.notify('Voxr', `${name} poked you!`);
       const now = Date.now();
       if (now - lastPokeSoundRef.current >= 60_000) {
         lastPokeSoundRef.current = now;

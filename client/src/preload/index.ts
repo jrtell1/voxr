@@ -6,4 +6,5 @@ contextBridge.exposeInMainWorld('electron', {
   maximize: () => ipcRenderer.send('window:maximize'),
   close: () => ipcRenderer.send('window:close'),
   shake: () => ipcRenderer.send('window:shake'),
+  notify: (title: string, body: string) => ipcRenderer.send('notification:show', { title, body }),
 });

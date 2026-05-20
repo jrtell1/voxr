@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, IpcMainEvent } from 'electron';
+import { app, BrowserWindow, ipcMain, IpcMainEvent, Notification } from 'electron';
 import { join } from 'path';
 
 function createWindow() {
@@ -62,6 +62,10 @@ ipcMain.on('window:shake', (e) => {
     const [dx, dy] = frames[i++];
     win.setPosition(origX + dx, origY + dy);
   }, 50);
+});
+
+ipcMain.on('notification:show', (_, { title, body }: { title: string; body: string }) => {
+  new Notification({ title, body }).show();
 });
 
 app.whenReady().then(createWindow);

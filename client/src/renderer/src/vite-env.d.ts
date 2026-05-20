@@ -7,5 +7,6 @@ interface Window {
     maximize: () => void;
     close: () => void;
     shake: () => void;
+    notify: (title: string, body: string) => void;
   };
 }
