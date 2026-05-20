@@ -3,6 +3,7 @@ defmodule VoxrWeb.UserSocket do
 
   channel "room:*", VoxrWeb.RoomChannel
   channel "user:me", VoxrWeb.UserChannel
+  channel "server:lobby", VoxrWeb.ServerChannel
 
   @impl true
   def connect(%{"token" => token}, socket, _connect_info) do

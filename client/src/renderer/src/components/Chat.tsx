@@ -33,8 +33,20 @@ export default function Chat({ session, onDisconnect }: Props) {
       setUnread((prev) => ({ ...prev, [channel_id]: count }));
     });
 
-    return () => userChannel.off('unread_updated');
-  }, [userChannel]);
+    const serverChannel = socket.channel('server:lobby');
+    serverChannel.join();
+    serverChannel.on('presence_state', (state) => {
+      setPresences(Presence.syncState({}, state));
+    });
+    serverChannel.on('presence_diff', (diff) => {
+      setPresences((prev) => Presence.syncDiff(prev, diff));
+    });
+
+    return () => {
+      userChannel.off('unread_updated');
+      serverChannel.leave();
+    };
+  }, [socket, userChannel]);
 
   useEffect(() => {
     if (scrollToUnread.current && dividerRef.current) {
@@ -75,14 +87,6 @@ export default function Chat({ session, onDisconnect }: Props) {
         setUnread((prev) => ({ ...prev, [channel_id]: count }));
       });
 
-      phxChannel.on('presence_state', (state) => {
-        setPresences(Presence.syncState({}, state));
-      });
-
-      phxChannel.on('presence_diff', (diff) => {
-        setPresences((prev) => Presence.syncDiff(prev, diff));
-      });
-
       channelRef.current = phxChannel;
     };
 
@@ -91,9 +95,6 @@ export default function Chat({ session, onDisconnect }: Props) {
       channelRef.current = null;
       old.off('new_message');
       old.off('unread_updated');
-      old.off('presence_state');
-      old.off('presence_diff');
-      setPresences({});
       setAllUsers([]);
       old.leave().receive('ok', doJoin);
     } else {
