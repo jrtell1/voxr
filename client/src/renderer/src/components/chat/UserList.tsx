@@ -13,14 +13,15 @@ interface Props {
   offlineUsers: PresenceUser[];
   currentUsername: string;
   onPoke: (userId: number) => void;
+  onOpenDm: (userId: number) => void;
 }
 
-function UserRow({ user, online, currentUsername, onPoke }: { user: PresenceUser; online: boolean; currentUsername: string; onPoke: (userId: number) => void }) {
+function UserRow({ user, online, currentUsername, onPoke, onOpenDm }: { user: PresenceUser; online: boolean; currentUsername: string; onPoke: (userId: number) => void; onOpenDm: (userId: number) => void }) {
   const visibleName = user.displayName ?? user.username;
   const isSelf = user.username === currentUsername;
 
   return (
-    <UserPopover userId={user.userId} username={user.username} displayName={user.displayName} isSelf={isSelf} onPoke={onPoke}>
+    <UserPopover userId={user.userId} username={user.username} displayName={user.displayName} isSelf={isSelf} onPoke={onPoke} onOpenDm={onOpenDm}>
       <button className="flex items-center gap-2 px-1 py-1 rounded-md w-full hover:bg-accent text-left cursor-pointer no-drag-region">
         <div className="relative shrink-0">
           <Avatar size="default" className={online ? '' : 'opacity-40'}>
@@ -41,7 +42,7 @@ function UserRow({ user, online, currentUsername, onPoke }: { user: PresenceUser
   );
 }
 
-export default function UserList({ onlineUsers, offlineUsers, currentUsername, onPoke }: Props) {
+export default function UserList({ onlineUsers, offlineUsers, currentUsername, onPoke, onOpenDm }: Props) {
   return (
     <aside className="w-64 border-l flex flex-col shrink-0 overflow-y-auto">
       <div className="flex flex-col p-2">
@@ -51,7 +52,7 @@ export default function UserList({ onlineUsers, offlineUsers, currentUsername, o
               Online — {onlineUsers.length}
             </p>
             {onlineUsers.map((user) => (
-              <UserRow key={user.id} user={user} online currentUsername={currentUsername} onPoke={onPoke} />
+              <UserRow key={user.id} user={user} online currentUsername={currentUsername} onPoke={onPoke} onOpenDm={onOpenDm} />
             ))}
           </>
         )}
@@ -62,7 +63,7 @@ export default function UserList({ onlineUsers, offlineUsers, currentUsername, o
               Offline — {offlineUsers.length}
             </p>
             {offlineUsers.map((user) => (
-              <UserRow key={user.id} user={user} online={false} currentUsername={currentUsername} onPoke={onPoke} />
+              <UserRow key={user.id} user={user} online={false} currentUsername={currentUsername} onPoke={onPoke} onOpenDm={onOpenDm} />
             ))}
           </>
         )}

@@ -19,6 +19,15 @@ export interface Message {
   user: ChatUser;
 }
 
+export interface DmChannel {
+  id: number;
+  other_user: ChatUser;
+}
+
+export type ActiveView =
+  | { type: 'channel'; channel: Channel }
+  | { type: 'dm'; dmChannel: DmChannel };
+
 export interface Session {
   socket: Socket;
   userChannel: PhxChannel;
@@ -28,5 +37,6 @@ export interface Session {
   displayName: string | null;
   channels: Channel[];
   initialUnread: Record<number, number>;
+  dmChannels: DmChannel[];
   token: string;
 }

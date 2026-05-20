@@ -10,8 +10,14 @@ defmodule VoxrWeb.UserChannel do
 
     Chat.init_channel_reads(user.id)
     unread = Chat.all_unread_counts(user.id)
+    dm_channels = Chat.list_dm_channels(user.id)
 
-    {:ok, %{unread_counts: unread, display_name: user.display_name}, socket}
+    {:ok,
+     %{
+       unread_counts: unread,
+       display_name: user.display_name,
+       dm_channels: Enum.map(dm_channels, &serialize_dm_channel(&1, user.id))
+     }, socket}
   end
 
   @impl true
@@ -19,6 +25,30 @@ defmodule VoxrWeb.UserChannel do
     case Accounts.update_display_name(socket.assigns.current_user.id, name) do
       {:ok, _user} -> {:reply, :ok, socket}
       {:error, _} -> {:reply, {:error, %{reason: "invalid"}}, socket}
+    end
+  end
+
+  @impl true
+  def handle_in("open_dm", %{"user_id" => target_id}, socket) do
+    user = socket.assigns.current_user
+
+    case Chat.find_or_create_dm_channel(user.id, target_id) do
+      {:ok, channel} ->
+        other_user = Accounts.get_user(target_id)
+
+        {:reply,
+         {:ok,
+          %{
+            channel_id: channel.id,
+            other_user: %{
+              id: other_user.id,
+              username: other_user.username,
+              display_name: other_user.display_name
+            }
+          }}, socket}
+
+      {:error, _} ->
+        {:reply, {:error, %{reason: "failed"}}, socket}
     end
   end
 
@@ -45,5 +75,21 @@ defmodule VoxrWeb.UserChannel do
   def handle_info({:poke, data}, socket) do
     push(socket, "poke", data)
     {:noreply, socket}
+  end
+
+  defp serialize_dm_channel(channel, current_user_id) do
+    other_user =
+      channel.channel_members
+      |> Enum.map(& &1.user)
+      |> Enum.find(fn u -> u.id != current_user_id end)
+
+    %{
+      id: channel.id,
+      other_user: %{
+        id: other_user.id,
+        username: other_user.username,
+        display_name: other_user.display_name
+      }
+    }
   end
 end

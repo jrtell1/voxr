@@ -1,5 +1,5 @@
 import { connect } from '../socket';
-import type { Session } from '../types';
+import type { Session, DmChannel } from '../types';
 
 export async function createSession(
   serverUrl: string,
@@ -61,8 +61,8 @@ function connectSocket(
     const userChannel = socket.channel('user:me');
     userChannel
       .join()
-      .receive('ok', ({ unread_counts, display_name }: { unread_counts: Record<number, number>; display_name: string | null }) => {
-        resolve({ socket, userChannel, serverUrl, serverName, username, displayName: display_name, channels, initialUnread: unread_counts, token });
+      .receive('ok', ({ unread_counts, display_name, dm_channels }: { unread_counts: Record<number, number>; display_name: string | null; dm_channels: DmChannel[] }) => {
+        resolve({ socket, userChannel, serverUrl, serverName, username, displayName: display_name, channels, initialUnread: unread_counts, dmChannels: dm_channels ?? [], token });
       })
       .receive('error', () => {
         socket.disconnect();

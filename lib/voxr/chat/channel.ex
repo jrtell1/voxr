@@ -7,6 +7,7 @@ defmodule Voxr.Chat.Channel do
     field :type, :string, default: "text"
 
     has_many :messages, Voxr.Chat.Message
+    has_many :channel_members, Voxr.Chat.ChannelMember
 
     timestamps(type: :utc_datetime)
   end

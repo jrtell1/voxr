@@ -7,22 +7,25 @@ defmodule VoxrWeb.RoomChannel do
   def join("room:" <> channel_id, _params, socket) do
     channel_id = String.to_integer(channel_id)
     channel = Chat.get_channel!(channel_id)
-    messages = Chat.list_messages(channel_id)
+    user = socket.assigns.current_user
 
-    Chat.mark_read(socket.assigns.current_user.id, channel_id)
+    if channel.type == "dm" and not Chat.channel_member?(channel_id, user.id) do
+      {:error, %{reason: "unauthorized"}}
+    else
+      messages = Chat.list_messages(channel_id)
+      Chat.mark_read(user.id, channel_id)
+      Phoenix.PubSub.unsubscribe(Voxr.PubSub, "room:#{channel_id}")
+      Phoenix.PubSub.subscribe(Voxr.PubSub, "room:#{channel_id}")
+      users = Accounts.list_users()
 
-    Phoenix.PubSub.unsubscribe(Voxr.PubSub, "room:#{channel_id}")
-    Phoenix.PubSub.subscribe(Voxr.PubSub, "room:#{channel_id}")
-
-    users = Accounts.list_users()
-
-    {:ok,
-     %{
-       channel: serialize_channel(channel),
-       messages: Enum.map(messages, &serialize_message/1),
-       users: Enum.map(users, &serialize_user/1)
-     },
-     assign(socket, :channel_id, channel_id)}
+      {:ok,
+       %{
+         channel: serialize_channel(channel),
+         messages: Enum.map(messages, &serialize_message/1),
+         users: Enum.map(users, &serialize_user/1)
+       },
+       assign(socket, :channel_id, channel_id)}
+    end
   end
 
   @impl true

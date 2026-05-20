@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Channel as PhxChannel, Presence } from 'phoenix';
 import { disconnect } from '../socket';
 import { getShakeEnabled, saveLastChannel, getLastChannel } from '../lib/storage';
-import type { Session, Channel, Message } from '../types';
+import type { Session, Channel, DmChannel, ActiveView, Message, ChatUser } from '../types';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import ChatSidebar from './chat/ChatSidebar';
 import MessageList from './chat/MessageList';
@@ -15,16 +15,16 @@ interface Props {
 }
 
 export default function Chat({ session, onDisconnect }: Props) {
-  const { socket, userChannel, serverName, username, channels, initialUnread } = session;
-  const [activeChannel, setActiveChannel] = useState<Channel | null>(null);
+  const { socket, userChannel, serverName, username, channels, initialUnread, serverUrl } = session;
+  const [activeView, setActiveView] = useState<ActiveView | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [unread, setUnread] = useState<Record<number, number>>(initialUnread);
   const [displayName, setDisplayName] = useState<string | null>(session.displayName);
   const [unreadStartIndex, setUnreadStartIndex] = useState<number | null>(null);
   const [presences, setPresences] = useState<Record<string, { metas: { username: string; display_name: string | null }[] }>>({});
-  const { serverUrl } = session;
   const [allUsers, setAllUsers] = useState<PresenceUser[]>([]);
+  const [dmChannels, setDmChannels] = useState<DmChannel[]>(session.dmChannels);
   const [pokeFrom, setPokeFrom] = useState<string | null>(null);
   const channelRef = useRef<PhxChannel | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -75,31 +75,17 @@ export default function Chat({ session, onDisconnect }: Props) {
     }
   }, [messages]);
 
-  function joinChannel(channel: Channel) {
+  function switchPhxChannel(topic: string, onJoinOk: (data: Record<string, unknown>) => void) {
     const doJoin = () => {
-      const phxChannel = socket.channel(`room:${channel.id}`);
+      const phxChannel = socket.channel(topic);
 
       phxChannel
         .join()
-        .receive('ok', ({ messages: history, users }: { messages: Message[]; users: { id: number; username: string; display_name: string | null }[] }) => {
-          const unreadCount = unread[channel.id] ?? 0;
-          setMessages(history);
-          setActiveChannel(channel);
-          setAllUsers(users.map((u) => ({ id: String(u.id), userId: u.id, username: u.username, displayName: u.display_name })));
-          saveLastChannel(serverUrl, channel.id);
-          setUnread((prev) => ({ ...prev, [channel.id]: 0 }));
-          if (unreadCount > 0 && history.length > 0) {
-            setUnreadStartIndex(Math.max(0, history.length - unreadCount));
-            scrollToUnread.current = true;
-          } else {
-            setUnreadStartIndex(null);
-            scrollToUnread.current = false;
-          }
-        })
+        .receive('ok', onJoinOk)
         .receive('error', (err: unknown) => console.error('Join error', err));
 
       phxChannel.on('new_message', (msg: Message) => {
-        setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]);
+        setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
       });
 
       phxChannel.on('unread_updated', ({ channel_id, count }: { channel_id: number; count: number }) => {
@@ -119,6 +105,46 @@ export default function Chat({ session, onDisconnect }: Props) {
     } else {
       doJoin();
     }
+  }
+
+  function joinChannel(channel: Channel) {
+    switchPhxChannel(`room:${channel.id}`, ({ messages: history, users }) => {
+      const history_ = history as Message[];
+      const users_ = users as { id: number; username: string; display_name: string | null }[];
+      const unreadCount = unread[channel.id] ?? 0;
+      setMessages(history_);
+      setActiveView({ type: 'channel', channel });
+      setAllUsers(users_.map((u) => ({ id: String(u.id), userId: u.id, username: u.username, displayName: u.display_name })));
+      saveLastChannel(serverUrl, channel.id);
+      setUnread((prev) => ({ ...prev, [channel.id]: 0 }));
+      if (unreadCount > 0 && history_.length > 0) {
+        setUnreadStartIndex(Math.max(0, history_.length - unreadCount));
+        scrollToUnread.current = true;
+      } else {
+        setUnreadStartIndex(null);
+        scrollToUnread.current = false;
+      }
+    });
+  }
+
+  function joinDmChannel(dmChannel: DmChannel) {
+    switchPhxChannel(`room:${dmChannel.id}`, ({ messages: history }) => {
+      const history_ = history as Message[];
+      setMessages(history_);
+      setActiveView({ type: 'dm', dmChannel });
+      setUnreadStartIndex(null);
+      scrollToUnread.current = false;
+    });
+  }
+
+  function handleOpenDm(userId: number) {
+    userChannel
+      .push('open_dm', { user_id: userId })
+      .receive('ok', ({ channel_id, other_user }: { channel_id: number; other_user: ChatUser }) => {
+        const dmChannel: DmChannel = { id: channel_id, other_user };
+        setDmChannels((prev) => (prev.some((d) => d.id === channel_id) ? prev : [...prev, dmChannel]));
+        joinDmChannel(dmChannel);
+      });
   }
 
   function sendMessage() {
@@ -142,6 +168,10 @@ export default function Chat({ session, onDisconnect }: Props) {
     onDisconnect();
   }
 
+  function handlePoke(userId: number) {
+    userChannel.push('poke', { user_id: userId });
+  }
+
   const onlineUsers: PresenceUser[] = Object.entries(presences).map(([id, { metas }]) => ({
     id,
     userId: parseInt(id, 10),
@@ -149,12 +179,15 @@ export default function Chat({ session, onDisconnect }: Props) {
     displayName: metas[0].display_name,
   }));
 
-  function handlePoke(userId: number) {
-    userChannel.push('poke', { user_id: userId });
-  }
-
   const onlineIds = new Set(onlineUsers.map((u) => u.id));
   const offlineUsers = allUsers.filter((u) => !onlineIds.has(u.id));
+
+  const messageLabel =
+    activeView?.type === 'channel'
+      ? `#${activeView.channel.name}`
+      : activeView?.type === 'dm'
+        ? `@${activeView.dmChannel.other_user.display_name ?? activeView.dmChannel.other_user.username}`
+        : '';
 
   return (
     <SidebarProvider className="flex-1 overflow-hidden relative" style={{ minHeight: 0 }}>
@@ -168,23 +201,36 @@ export default function Chat({ session, onDisconnect }: Props) {
         username={username}
         displayName={displayName}
         channels={channels}
+        dmChannels={dmChannels}
         unread={unread}
-        activeChannelId={activeChannel?.id}
+        activeView={activeView}
         onJoinChannel={joinChannel}
+        onJoinDm={joinDmChannel}
         onDisplayNameChange={handleDisplayNameChange}
         onDisconnect={handleDisconnect}
       />
 
       <SidebarInset className="overflow-hidden flex flex-col">
-        {activeChannel && (
+        {activeView && (
           <header className="flex items-center gap-2 border-b px-4 h-12 shrink-0 select-none">
-            <span className="text-muted-foreground">#</span>
-            <span className="font-semibold text-sm">{activeChannel.name}</span>
+            {activeView.type === 'channel' ? (
+              <>
+                <span className="text-muted-foreground">#</span>
+                <span className="font-semibold text-sm">{activeView.channel.name}</span>
+              </>
+            ) : (
+              <>
+                <span className="text-muted-foreground">@</span>
+                <span className="font-semibold text-sm">
+                  {activeView.dmChannel.other_user.display_name ?? activeView.dmChannel.other_user.username}
+                </span>
+              </>
+            )}
           </header>
         )}
 
         <div className="flex flex-row flex-1 min-h-0 overflow-hidden">
-          {activeChannel ? (
+          {activeView ? (
             <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
               <MessageList
                 messages={messages}
@@ -193,11 +239,12 @@ export default function Chat({ session, onDisconnect }: Props) {
                 dividerRef={dividerRef}
                 currentUsername={username}
                 onPoke={handlePoke}
+                onOpenDm={handleOpenDm}
               />
 
               <MessageInput
                 value={input}
-                channelName={activeChannel.name}
+                label={messageLabel}
                 onChange={setInput}
                 onSubmit={sendMessage}
               />
@@ -213,6 +260,7 @@ export default function Chat({ session, onDisconnect }: Props) {
             offlineUsers={offlineUsers}
             currentUsername={username}
             onPoke={handlePoke}
+            onOpenDm={handleOpenDm}
           />
         </div>
       </SidebarInset>

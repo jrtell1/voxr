@@ -4,12 +4,12 @@ import { Kbd } from '@/components/ui/kbd';
 
 interface Props {
   value: string;
-  channelName: string;
+  label: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
 }
 
-export default function MessageInput({ value, channelName, onChange, onSubmit }: Props) {
+export default function MessageInput({ value, label, onChange, onSubmit }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -38,7 +38,7 @@ export default function MessageInput({ value, channelName, onChange, onSubmit }:
           value={value}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          placeholder={`Message #${channelName}`}
+          placeholder={`Message ${label}`}
           className="resize-none overflow-hidden min-h-11 max-h-40 py-2.5 pr-14"
           rows={1}
           autoFocus

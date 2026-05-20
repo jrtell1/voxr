@@ -9,10 +9,11 @@ interface Props {
   displayName: string | null;
   isSelf: boolean;
   onPoke: (userId: number) => void;
+  onOpenDm: (userId: number) => void;
   children: ReactNode;
 }
 
-export default function UserPopover({ userId, username, displayName, isSelf, onPoke, children }: Props) {
+export default function UserPopover({ userId, username, displayName, isSelf, onPoke, onOpenDm, children }: Props) {
   const visibleName = displayName ?? username;
 
   return (
@@ -30,9 +31,14 @@ export default function UserPopover({ userId, username, displayName, isSelf, onP
             )}
           </div>
           {!isSelf && (
-            <Button size="sm" variant="secondary" className="w-full" onClick={() => onPoke(userId)}>
-              Poke
-            </Button>
+            <div className="flex flex-col gap-2 w-full">
+              <Button size="sm" variant="secondary" className="w-full" onClick={() => onOpenDm(userId)}>
+                Message
+              </Button>
+              <Button size="sm" variant="secondary" className="w-full" onClick={() => onPoke(userId)}>
+                Poke
+              </Button>
+            </div>
           )}
         </div>
       </PopoverContent>

@@ -1,5 +1,5 @@
 import { useState, FormEvent } from 'react';
-import type { Channel } from '../../types';
+import type { Channel, DmChannel, ActiveView } from '../../types';
 import {
   Sidebar,
   SidebarContent,
@@ -33,9 +33,11 @@ interface Props {
   username: string;
   displayName: string | null;
   channels: Channel[];
+  dmChannels: DmChannel[];
   unread: Record<number, number>;
-  activeChannelId: number | undefined;
+  activeView: ActiveView | null;
   onJoinChannel: (channel: Channel) => void;
+  onJoinDm: (dmChannel: DmChannel) => void;
   onDisplayNameChange: (name: string) => Promise<void>;
   onDisconnect: () => void;
 }
@@ -45,9 +47,11 @@ export default function ChatSidebar({
   username,
   displayName,
   channels,
+  dmChannels,
   unread,
-  activeChannelId,
+  activeView,
   onJoinChannel,
+  onJoinDm,
   onDisplayNameChange,
   onDisconnect,
 }: Props) {
@@ -85,6 +89,8 @@ export default function ChatSidebar({
   }
 
   const visibleName = displayName ?? username;
+  const activeChannelId = activeView?.type === 'channel' ? activeView.channel.id : undefined;
+  const activeDmId = activeView?.type === 'dm' ? activeView.dmChannel.id : undefined;
 
   return (
     <>
@@ -116,6 +122,30 @@ export default function ChatSidebar({
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
+
+          {dmChannels.length > 0 && (
+            <SidebarGroup>
+              <SidebarGroupLabel>Direct Messages</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {dmChannels.map((dm) => {
+                    const name = dm.other_user.display_name ?? dm.other_user.username;
+                    const isActive = dm.id === activeDmId;
+                    return (
+                      <SidebarMenuItem key={dm.id}>
+                        <SidebarMenuButton isActive={isActive} onClick={() => onJoinDm(dm)}>
+                          <Avatar size="sm">
+                            <AvatarFallback>{name[0].toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                          <span>{name}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
         </SidebarContent>
 
         <SidebarFooter className="border-t">

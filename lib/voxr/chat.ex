@@ -1,7 +1,7 @@
 defmodule Voxr.Chat do
   import Ecto.Query
   alias Voxr.Repo
-  alias Voxr.Chat.{Channel, Message, ChannelRead}
+  alias Voxr.Chat.{Channel, Message, ChannelRead, ChannelMember}
 
   def list_channels do
     Channel
@@ -113,6 +113,54 @@ defmodule Voxr.Chat do
 
       {read.channel_id, count}
     end)
+  end
+
+  # DMs
+
+  def find_or_create_dm_channel(user_a_id, user_b_id) do
+    case find_existing_dm_channel(user_a_id, user_b_id) do
+      nil ->
+        Repo.transaction(fn ->
+          channel = Repo.insert!(%Channel{name: "dm", type: "dm"})
+
+          Repo.insert_all(ChannelMember, [
+            %{channel_id: channel.id, user_id: user_a_id},
+            %{channel_id: channel.id, user_id: user_b_id}
+          ])
+
+          channel
+        end)
+
+      channel ->
+        {:ok, channel}
+    end
+  end
+
+  def list_dm_channels(user_id) do
+    Channel
+    |> join(:inner, [c], m in ChannelMember, on: m.channel_id == c.id and m.user_id == ^user_id)
+    |> where([c], c.type == "dm")
+    |> preload(channel_members: :user)
+    |> Repo.all()
+  end
+
+  def channel_member?(channel_id, user_id) do
+    ChannelMember
+    |> where(channel_id: ^channel_id, user_id: ^user_id)
+    |> Repo.exists?()
+  end
+
+  defp find_existing_dm_channel(user_a_id, user_b_id) do
+    Channel
+    |> join(:inner, [c], m1 in ChannelMember,
+      on: m1.channel_id == c.id and m1.user_id == ^user_a_id
+    )
+    |> join(:inner, [c, m1], m2 in ChannelMember,
+      on: m2.channel_id == c.id and m2.user_id == ^user_b_id
+    )
+    |> where([c], c.type == "dm")
+    |> limit(1)
+    |> Repo.one()
   end
 
   defp broadcast_unread_updates(message) do
