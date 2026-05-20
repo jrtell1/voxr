@@ -22,9 +22,15 @@ defmodule VoxrWeb.UserChannel do
 
   @impl true
   def handle_in("update_display_name", %{"display_name" => name}, socket) do
-    case Accounts.update_display_name(socket.assigns.current_user.id, name) do
-      {:ok, _user} -> {:reply, :ok, socket}
-      {:error, _} -> {:reply, {:error, %{reason: "invalid"}}, socket}
+    user = socket.assigns.current_user
+
+    case Accounts.update_display_name(user.id, name) do
+      {:ok, _user} ->
+        Phoenix.PubSub.broadcast(Voxr.PubSub, "user:#{user.id}", {:presence_update, name})
+        {:reply, :ok, socket}
+
+      {:error, _} ->
+        {:reply, {:error, %{reason: "invalid"}}, socket}
     end
   end
 

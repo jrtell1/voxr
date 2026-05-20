@@ -13,6 +13,7 @@ defmodule VoxrWeb.ServerChannel do
   @impl true
   def handle_info(:after_join, socket) do
     user = socket.assigns.current_user
+    Phoenix.PubSub.subscribe(Voxr.PubSub, "user:#{user.id}")
 
     {:ok, _} =
       Presence.track(socket, user.id, %{
@@ -21,6 +22,13 @@ defmodule VoxrWeb.ServerChannel do
       })
 
     push(socket, "presence_state", Presence.list(socket))
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:presence_update, display_name}, socket) do
+    user = socket.assigns.current_user
+    Presence.update(socket, user.id, %{username: user.username, display_name: display_name})
     {:noreply, socket}
   end
 
