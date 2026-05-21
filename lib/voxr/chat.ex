@@ -10,6 +10,13 @@ defmodule Voxr.Chat do
     |> Repo.all()
   end
 
+  def list_voice_channels do
+    Channel
+    |> where(type: "voice")
+    |> order_by(:name)
+    |> Repo.all()
+  end
+
   def get_channel!(id), do: Repo.get!(Channel, id)
 
   def create_channel(attrs) do

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, IpcMainEvent, Notification } from 'electron';
+import { app, BrowserWindow, ipcMain, IpcMainEvent, Notification, session } from 'electron';
 import { join } from 'path';
 
 function createWindow() {
@@ -68,7 +68,15 @@ ipcMain.on('notification:show', (_, { title, body }: { title: string; body: stri
   new Notification({ title, body }).show();
 });
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
+    callback(permission === 'media');
+  });
+  session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
+    return permission === 'media';
+  });
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();

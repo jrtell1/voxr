@@ -32,6 +32,11 @@ config :logger, :default_formatter,
 config :phoenix, :json_library, Jason
 
 
+config :voxr,
+  livekit_url: "ws://localhost:7880",
+  livekit_api_key: "devkey",
+  livekit_api_secret: "secret"
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

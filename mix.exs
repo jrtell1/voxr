@@ -50,7 +50,8 @@ defmodule Voxr.MixProject do
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
       {:cors_plug, "~> 3.0"},
-      {:pbkdf2_elixir, "~> 2.0"}
+      {:pbkdf2_elixir, "~> 2.0"},
+      {:joken, "~> 2.6"}
     ]
   end
 

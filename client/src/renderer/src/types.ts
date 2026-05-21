@@ -19,6 +19,12 @@ export interface Message {
   user: ChatUser;
 }
 
+export interface VoiceParticipant {
+  userId: number;
+  username: string;
+  displayName: string | null;
+}
+
 export interface DmChannel {
   id: number;
   other_user: ChatUser;

@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
+import { Room, RoomEvent } from 'livekit-client';
 import { Channel as PhxChannel, Presence } from 'phoenix';
 import { disconnect } from '../socket';
 import { getShakeEnabled, getSoundEnabled, saveLastChannel, getLastChannel } from '../lib/storage';
-import type { Session, Channel, DmChannel, ActiveView, Message, ChatUser } from '../types';
+import type { Session, Channel, DmChannel, ActiveView, Message, ChatUser, VoiceParticipant } from '../types';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import ChatSidebar from './chat/ChatSidebar';
 import MessageList from './chat/MessageList';
@@ -16,23 +17,32 @@ interface Props {
 }
 
 export default function Chat({ session, onDisconnect }: Props) {
-  const { socket, userChannel, serverName, username, channels, initialUnread, serverUrl } = session;
+  const { socket, userChannel, serverName, username, channels: allChannels, initialUnread, serverUrl } = session;
+  const textChannels = allChannels.filter((c) => c.type === 'text');
+  const voiceChannels = allChannels.filter((c) => c.type === 'voice');
+
   const [activeView, setActiveView] = useState<ActiveView | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [unread, setUnread] = useState<Record<number, number>>(initialUnread);
   const [displayName, setDisplayName] = useState<string | null>(session.displayName);
   const [unreadStartIndex, setUnreadStartIndex] = useState<number | null>(null);
-  const [presences, setPresences] = useState<Record<string, { metas: { username: string; display_name: string | null }[] }>>({});
+  const [presences, setPresences] = useState<Record<string, { metas: { username: string; display_name: string | null; voice_channel_id?: number | null }[] }>>({});
   const [allUsers, setAllUsers] = useState<PresenceUser[]>([]);
   const [dmChannels, setDmChannels] = useState<DmChannel[]>(session.dmChannels);
   const [pokeFrom, setPokeFrom] = useState<string | null>(null);
+  const [typingUsers, setTypingUsers] = useState<Map<number, string>>(new Map());
+  const [voiceState, setVoiceState] = useState<{ channelId: number; channelName: string; isSpeaking: boolean } | null>(null);
+  const [isMuted, setIsMuted] = useState(false);
+  const [speakingUserIds, setSpeakingUserIds] = useState<Set<number>>(new Set());
+
   const channelRef = useRef<PhxChannel | null>(null);
+  const serverChannelRef = useRef<PhxChannel | null>(null);
+  const liveKitRoomRef = useRef<Room | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const dividerRef = useRef<HTMLDivElement | null>(null);
   const scrollToUnread = useRef(false);
   const lastPokeSoundRef = useRef(0);
-  const [typingUsers, setTypingUsers] = useState<Map<number, string>>(new Map());
   const typingTimeoutsRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
 
   useEffect(() => {
@@ -59,6 +69,7 @@ export default function Chat({ session, onDisconnect }: Props) {
     });
 
     const serverChannel = socket.channel('server:lobby');
+    serverChannelRef.current = serverChannel;
     serverChannel.join();
     serverChannel.on('presence_state', (state) => {
       setPresences(Presence.syncState({}, state));
@@ -71,6 +82,7 @@ export default function Chat({ session, onDisconnect }: Props) {
       userChannel.off('unread_updated');
       userChannel.off('dm_channel_opened');
       userChannel.off('poke');
+      serverChannelRef.current = null;
       serverChannel.leave();
     };
   }, [socket, userChannel]);
@@ -78,7 +90,7 @@ export default function Chat({ session, onDisconnect }: Props) {
   useEffect(() => {
     const lastChannelId = getLastChannel(serverUrl);
     if (!lastChannelId) return;
-    const channel = channels.find((c) => c.id === lastChannelId);
+    const channel = textChannels.find((c) => c.id === lastChannelId);
     if (channel) joinChannel(channel);
   }, []);
 
@@ -203,6 +215,55 @@ export default function Chat({ session, onDisconnect }: Props) {
     setActiveView({ type: 'pending_dm', targetUser });
   }
 
+  function joinVoiceChannel(channel: Channel) {
+    serverChannelRef.current?.push('join_voice', { channel_id: channel.id })
+      .receive('ok', async ({ token, url }: { token: string; url: string }) => {
+        liveKitRoomRef.current?.disconnect();
+
+        const room = new Room();
+        room.on(RoomEvent.Disconnected, () => {
+          setVoiceState(null);
+          setIsMuted(false);
+          setSpeakingUserIds(new Set());
+          liveKitRoomRef.current = null;
+        });
+
+        room.on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
+          const ids = new Set(speakers.map((s) => parseInt(s.identity, 10)));
+          setSpeakingUserIds(ids);
+          const localId = parseInt(room.localParticipant.identity, 10);
+          setVoiceState((prev) => prev ? { ...prev, isSpeaking: ids.has(localId) } : prev);
+        });
+
+        try {
+          await room.connect(url, token);
+          await room.localParticipant.setMicrophoneEnabled(true);
+          liveKitRoomRef.current = room;
+          setVoiceState({ channelId: channel.id, channelName: channel.name, isSpeaking: false });
+        } catch (err) {
+          console.error('Voice connection failed', err);
+          room.disconnect();
+        }
+      });
+  }
+
+  function leaveVoiceChannel() {
+    liveKitRoomRef.current?.disconnect();
+    liveKitRoomRef.current = null;
+    serverChannelRef.current?.push('leave_voice', {});
+    setVoiceState(null);
+    setIsMuted(false);
+    setSpeakingUserIds(new Set());
+  }
+
+  async function toggleMute() {
+    const room = liveKitRoomRef.current;
+    if (!room) return;
+    const newMuted = !isMuted;
+    await room.localParticipant.setMicrophoneEnabled(!newMuted);
+    setIsMuted(newMuted);
+  }
+
   function sendTyping() {
     channelRef.current?.push('typing', {});
   }
@@ -245,6 +306,7 @@ export default function Chat({ session, onDisconnect }: Props) {
   }
 
   function handleDisconnect() {
+    leaveVoiceChannel();
     disconnect();
     onDisconnect();
   }
@@ -259,6 +321,20 @@ export default function Chat({ session, onDisconnect }: Props) {
     username: metas[0].username,
     displayName: metas[0].display_name,
   }));
+
+  const voicePresence: Record<number, VoiceParticipant[]> = {};
+  for (const [id, { metas }] of Object.entries(presences)) {
+    const meta = metas[0];
+    const vcId = meta.voice_channel_id;
+    if (vcId != null) {
+      if (!voicePresence[vcId]) voicePresence[vcId] = [];
+      voicePresence[vcId].push({
+        userId: parseInt(id, 10),
+        username: meta.username,
+        displayName: meta.display_name,
+      });
+    }
+  }
 
   const onlineIds = new Set(onlineUsers.map((u) => u.id));
   const offlineUsers = allUsers.filter((u) => !onlineIds.has(u.id));
@@ -283,12 +359,20 @@ export default function Chat({ session, onDisconnect }: Props) {
         serverName={serverName}
         username={username}
         displayName={displayName}
-        channels={channels}
+        channels={textChannels}
+        voiceChannels={voiceChannels}
         dmChannels={dmChannels}
         unread={unread}
         activeView={activeView}
+        voiceState={voiceState}
+        voicePresence={voicePresence}
+        speakingUserIds={speakingUserIds}
+        isMuted={isMuted}
         onJoinChannel={joinChannel}
+        onJoinVoice={joinVoiceChannel}
         onJoinDm={joinDmChannel}
+        onToggleMute={toggleMute}
+        onLeaveVoice={leaveVoiceChannel}
         onDisplayNameChange={handleDisplayNameChange}
         onDisconnect={handleDisconnect}
       />

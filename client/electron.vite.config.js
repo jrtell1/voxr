@@ -16,5 +16,8 @@ export default defineConfig({
         '@': resolve('src/renderer/src'),
       },
     },
+    optimizeDeps: {
+      include: ['livekit-client'],
+    },
   },
 });
