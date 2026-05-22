@@ -23,16 +23,16 @@ end
 config :voxr, VoxrWeb.Endpoint, http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
 if config_env() == :prod do
-  database_path =
-    System.get_env("DATABASE_PATH") ||
+  database_url =
+    System.get_env("DATABASE_URL") ||
       raise """
-      environment variable DATABASE_PATH is missing.
-      For example: /etc/voxr/voxr.db
+      environment variable DATABASE_URL is missing.
+      For example: ecto://USER:PASS@HOST/DATABASE
       """
 
   config :voxr, Voxr.Repo,
-    database: database_path,
-    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "5")
+    url: database_url,
+    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10")
 
   # The secret key base is used to sign/encrypt cookies and other secrets.
   # A default value is used in config/dev.exs and config/test.exs but you
@@ -60,6 +60,17 @@ if config_env() == :prod do
       ip: {0, 0, 0, 0, 0, 0, 0, 0}
     ],
     secret_key_base: secret_key_base
+
+  config :voxr,
+    livekit_url:
+      System.get_env("LIVEKIT_URL") ||
+        raise("environment variable LIVEKIT_URL is missing"),
+    livekit_api_key:
+      System.get_env("LIVEKIT_API_KEY") ||
+        raise("environment variable LIVEKIT_API_KEY is missing"),
+    livekit_api_secret:
+      System.get_env("LIVEKIT_API_SECRET") ||
+        raise("environment variable LIVEKIT_API_SECRET is missing")
 
   # ## SSL Support
   #
