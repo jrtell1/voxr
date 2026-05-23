@@ -137,10 +137,9 @@ export default function ChatSidebar({ serverName, username, textChannels, voiceC
                 <SidebarMenu>
                   {voiceChannels.map((ch) => {
                     const participants = voicePresence[ch.id] ?? [];
-                    const isActive = voiceState?.channelId === ch.id;
                     return (
                       <SidebarMenuItem key={ch.id}>
-                        <SidebarMenuButton isActive={isActive} onClick={() => joinVoiceChannel(ch)}>
+                        <SidebarMenuButton onClick={() => joinVoiceChannel(ch)}>
                           <Volume2Icon className="size-3.5 text-muted-foreground shrink-0" />
                           <span>{ch.name}</span>
                           {participants.length > 0 && (
