@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import { Room, RoomEvent } from 'livekit-client';
 import { Channel as PhxChannel, Presence } from 'phoenix';
 import { disconnect } from '../socket';
@@ -340,12 +340,19 @@ export default function Chat({ session, onDisconnect }: Props) {
     userChannel.push('poke', { user_id: userId });
   }
 
-  const onlineUsers: PresenceUser[] = Object.entries(presences).map(([id, { metas }]) => ({
-    id,
-    userId: parseInt(id, 10),
-    username: metas[0].username,
-    displayName: metas[0].display_name,
-  }));
+  const onlineUsers = useMemo<PresenceUser[]>(() =>
+    Object.entries(presences).map(([id, { metas }]) => ({
+      id,
+      userId: parseInt(id, 10),
+      username: metas[0].username,
+      displayName: metas[0].display_name,
+    })),
+  [presences]);
+
+  const offlineUsers = useMemo(() => {
+    const onlineIds = new Set(onlineUsers.map((u) => u.id));
+    return allUsers.filter((u) => !onlineIds.has(u.id));
+  }, [onlineUsers, allUsers]);
 
   const voicePresence: Record<number, VoiceParticipant[]> = {};
   for (const [id, { metas }] of Object.entries(presences)) {
@@ -360,9 +367,6 @@ export default function Chat({ session, onDisconnect }: Props) {
       });
     }
   }
-
-  const onlineIds = new Set(onlineUsers.map((u) => u.id));
-  const offlineUsers = allUsers.filter((u) => !onlineIds.has(u.id));
 
   const dmTargetUser =
     activeView?.type === 'dm' ? activeView.dmChannel.other_user :

@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import UserPopover from './UserPopover';
 import type { ChatUser } from '../../types';
@@ -50,7 +51,7 @@ function UserRow({ user, online, currentUsername, onPoke, onOpenDm }: {
   );
 }
 
-export default function UserList({ onlineUsers, offlineUsers, currentUsername, onPoke, onOpenDm }: Props) {
+function UserList({ onlineUsers, offlineUsers, currentUsername, onPoke, onOpenDm }: Props) {
   return (
     <aside className="w-64 border-l flex flex-col shrink-0 overflow-y-auto">
       <div className="flex flex-col p-2">
@@ -79,3 +80,9 @@ export default function UserList({ onlineUsers, offlineUsers, currentUsername, o
     </aside>
   );
 }
+
+export default memo(UserList, (prev, next) =>
+  prev.onlineUsers === next.onlineUsers &&
+  prev.offlineUsers === next.offlineUsers &&
+  prev.currentUsername === next.currentUsername
+);
