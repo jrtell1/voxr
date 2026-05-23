@@ -20,7 +20,7 @@ defmodule VoxrWeb.RoomChannel do
     if channel.type == "dm" and not Chat.channel_member?(channel_id, user.id) do
       {:error, %{reason: "unauthorized"}}
     else
-      messages = Chat.list_messages(channel_id)
+      {messages, has_more} = Chat.list_messages(channel_id)
       Chat.mark_read(user.id, channel_id)
       Phoenix.PubSub.unsubscribe(Voxr.PubSub, "room:#{channel_id}")
       Phoenix.PubSub.subscribe(Voxr.PubSub, "room:#{channel_id}")
@@ -30,10 +30,17 @@ defmodule VoxrWeb.RoomChannel do
        %{
          channel: serialize_channel(channel),
          messages: Enum.map(messages, &serialize_message/1),
+         has_more: has_more,
          users: Enum.map(users, &serialize_user/1)
        },
        assign(socket, :channel_id, channel_id)}
     end
+  end
+
+  @impl true
+  def handle_in("load_more", %{"before_id" => before_id}, socket) do
+    {messages, has_more} = Chat.list_messages(socket.assigns.channel_id, 50, before_id)
+    {:reply, {:ok, %{messages: Enum.map(messages, &serialize_message/1), has_more: has_more}}, socket}
   end
 
   @impl true

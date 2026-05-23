@@ -25,13 +25,20 @@ defmodule Voxr.Chat do
     |> Repo.insert()
   end
 
-  def list_messages(channel_id, limit \\ 50) do
-    Message
-    |> where(channel_id: ^channel_id)
-    |> order_by(asc: :inserted_at)
-    |> limit(^limit)
-    |> preload(:user)
-    |> Repo.all()
+  def list_messages(channel_id, limit \\ 50, before_id \\ nil) do
+    query =
+      Message
+      |> where(channel_id: ^channel_id)
+      |> order_by(desc: :id)
+      |> limit(^(limit + 1))
+      |> preload(:user)
+
+    query = if before_id, do: where(query, [m], m.id < ^before_id), else: query
+
+    results = Repo.all(query)
+    has_more = length(results) > limit
+    messages = results |> Enum.take(limit) |> Enum.reverse()
+    {messages, has_more}
   end
 
   def create_message(attrs) do

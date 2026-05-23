@@ -1,6 +1,7 @@
-import type { RefObject } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import type { Message, ChatUser } from '../../types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Spinner } from '@/components/ui/spinner';
 import UserPopover from './UserPopover';
 
 interface Props {
@@ -8,14 +9,55 @@ interface Props {
   unreadStartIndex: number | null;
   messagesEndRef: RefObject<HTMLDivElement | null>;
   dividerRef: RefObject<HTMLDivElement | null>;
+  scrollContainerRef: RefObject<HTMLDivElement | null>;
   currentUsername: string;
+  hasMore: boolean;
+  loadingMore: boolean;
+  onLoadMore: () => void;
   onPoke: (userId: number) => void;
   onOpenDm: (user: ChatUser) => void;
 }
 
-export default function MessageList({ messages, unreadStartIndex, messagesEndRef, dividerRef, currentUsername, onPoke, onOpenDm }: Props) {
+export default function MessageList({
+  messages,
+  unreadStartIndex,
+  messagesEndRef,
+  dividerRef,
+  scrollContainerRef,
+  currentUsername,
+  hasMore,
+  loadingMore,
+  onLoadMore,
+  onPoke,
+  onOpenDm,
+}: Props) {
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const onLoadMoreRef = useRef(onLoadMore);
+  onLoadMoreRef.current = onLoadMore;
+  const loadingMoreRef = useRef(loadingMore);
+  loadingMoreRef.current = loadingMore;
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || !hasMore) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && !loadingMoreRef.current) {
+        onLoadMoreRef.current();
+      }
+    });
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore]);
+
   return (
-    <div className="flex-1 overflow-y-auto pt-4 px-1 flex flex-col gap-0.5 select-text">
+    <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pt-4 px-1 flex flex-col gap-0.5 select-text">
+      {hasMore && (
+        <div ref={sentinelRef} className="flex justify-center py-2">
+          {loadingMore && <Spinner />}
+        </div>
+      )}
       {messages.map((msg, i) => {
         const visibleName = msg.user.display_name ?? msg.user.username;
         const isSelf = msg.user.username === currentUsername;

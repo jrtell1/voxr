@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Room, RoomEvent } from 'livekit-client';
 import { Channel as PhxChannel, Presence } from 'phoenix';
 import { disconnect } from '../socket';
@@ -35,12 +35,16 @@ export default function Chat({ session, onDisconnect }: Props) {
   const [voiceState, setVoiceState] = useState<{ channelId: number; channelName: string; isSpeaking: boolean } | null>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [speakingUserIds, setSpeakingUserIds] = useState<Set<number>>(new Set());
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const channelRef = useRef<PhxChannel | null>(null);
   const serverChannelRef = useRef<PhxChannel | null>(null);
   const liveKitRoomRef = useRef<Room | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const dividerRef = useRef<HTMLDivElement | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const prevScrollHeightRef = useRef<number | null>(null);
   const scrollToUnread = useRef(false);
   const lastPokeSoundRef = useRef(0);
   const typingTimeoutsRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
@@ -94,7 +98,13 @@ export default function Chat({ session, onDisconnect }: Props) {
     if (channel) joinChannel(channel);
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    const container = scrollContainerRef.current;
+    if (prevScrollHeightRef.current !== null && container) {
+      container.scrollTop = container.scrollHeight - prevScrollHeightRef.current;
+      prevScrollHeightRef.current = null;
+      return;
+    }
     if (scrollToUnread.current && dividerRef.current) {
       dividerRef.current.scrollIntoView();
       scrollToUnread.current = false;
@@ -146,6 +156,9 @@ export default function Chat({ session, onDisconnect }: Props) {
       channelRef.current = phxChannel;
     };
 
+    setHasMore(false);
+    setLoadingMore(false);
+
     if (channelRef.current) {
       const old = channelRef.current;
       channelRef.current = null;
@@ -163,11 +176,12 @@ export default function Chat({ session, onDisconnect }: Props) {
   }
 
   function joinChannel(channel: Channel) {
-    switchPhxChannel(`room:${channel.id}`, ({ messages: history, users }) => {
+    switchPhxChannel(`room:${channel.id}`, ({ messages: history, has_more, users }) => {
       const history_ = history as Message[];
       const users_ = users as { id: number; username: string; display_name: string | null }[];
       const unreadCount = unread[channel.id] ?? 0;
       setMessages(history_);
+      setHasMore(has_more as boolean);
       setActiveView({ type: 'channel', channel });
       setAllUsers(users_.map((u) => ({ id: String(u.id), userId: u.id, username: u.username, displayName: u.display_name })));
       saveLastChannel(serverUrl, channel.id);
@@ -183,10 +197,11 @@ export default function Chat({ session, onDisconnect }: Props) {
   }
 
   function joinDmChannel(dmChannel: DmChannel) {
-    switchPhxChannel(`room:${dmChannel.id}`, ({ messages: history }) => {
+    switchPhxChannel(`room:${dmChannel.id}`, ({ messages: history, has_more }) => {
       const history_ = history as Message[];
       const unreadCount = unread[dmChannel.id] ?? 0;
       setMessages(history_);
+      setHasMore(has_more as boolean);
       setActiveView({ type: 'dm', dmChannel });
       setUnread((prev) => ({ ...prev, [dmChannel.id]: 0 }));
       if (unreadCount > 0 && history_.length > 0) {
@@ -197,6 +212,19 @@ export default function Chat({ session, onDisconnect }: Props) {
         scrollToUnread.current = false;
       }
     });
+  }
+
+  function loadMoreMessages() {
+    if (!channelRef.current || loadingMore || !hasMore || messages.length === 0) return;
+    prevScrollHeightRef.current = scrollContainerRef.current?.scrollHeight ?? null;
+    setLoadingMore(true);
+    channelRef.current.push('load_more', { before_id: messages[0].id })
+      .receive('ok', ({ messages: older, has_more }: { messages: Message[]; has_more: boolean }) => {
+        setMessages((prev) => [...older, ...prev]);
+        setUnreadStartIndex((prev) => prev !== null ? prev + older.length : null);
+        setHasMore(has_more);
+        setLoadingMore(false);
+      });
   }
 
   function handleOpenDm(targetUser: ChatUser) {
@@ -408,7 +436,11 @@ export default function Chat({ session, onDisconnect }: Props) {
                 unreadStartIndex={unreadStartIndex}
                 messagesEndRef={messagesEndRef}
                 dividerRef={dividerRef}
+                scrollContainerRef={scrollContainerRef}
                 currentUsername={username}
+                hasMore={hasMore}
+                loadingMore={loadingMore}
+                onLoadMore={loadMoreMessages}
                 onPoke={handlePoke}
                 onOpenDm={handleOpenDm}
               />
