@@ -113,7 +113,11 @@ export default function Chat({ session, onDisconnect }: Props) {
         .receive('error', (err: unknown) => console.error('Join error', err));
 
       phxChannel.on('new_message', (msg: Message) => {
-        setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === msg.id)) return prev;
+          const idx = prev.findIndex((m) => m.id > msg.id);
+          return idx === -1 ? [...prev, msg] : [...prev.slice(0, idx), msg, ...prev.slice(idx)];
+        });
       });
 
       phxChannel.on('unread_updated', ({ channel_id, count }: { channel_id: number; count: number }) => {
