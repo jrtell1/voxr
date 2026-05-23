@@ -36,6 +36,8 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.0",
+    "@tanstack/react-store": "^0.11.0",
+    "@tanstack/store": "^0.11.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -57,11 +59,11 @@
     "@vitejs/plugin-react": "^4.3.4",
     "electron": "^35.0.0",
     "electron-builder": "^25.1.8",
-    "png-to-ico": "^2.1.8",
-    "sharp": "^0.33.5",
     "electron-vite": "^3.1.0",
+    "png-to-ico": "^2.1.8",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "sharp": "^0.33.5",
     "typescript": "^6.0.3",
     "vite": "^6.0.0"
   }

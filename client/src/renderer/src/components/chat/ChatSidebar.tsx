@@ -1,5 +1,6 @@
-import { useState, FormEvent } from 'react';
-import type { Channel, DmChannel, ActiveView, VoiceParticipant } from '../../types';
+import { useState, useMemo, FormEvent } from 'react';
+import { useSelector } from '@tanstack/react-store';
+import type { Channel, VoiceParticipant } from '@/types';
 import {
   Sidebar,
   SidebarContent,
@@ -28,66 +29,49 @@ import { LogOutIcon, SettingsIcon, Volume2Icon } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { getShakeEnabled, setShakeEnabled, getSoundEnabled, setSoundEnabled } from '@/lib/storage';
 import VoiceControls from './VoiceControls';
+import { chatStore } from '@/stores/chatStore';
+import { serverStore } from '@/stores/serverStore';
+import { voiceStore } from '@/stores/voiceStore';
+import { joinChannel, joinDmChannel } from '@/lib/chatActions';
+import { joinVoiceChannel } from '@/lib/voiceActions';
+import { updateDisplayName } from '@/lib/serverActions';
 
 interface Props {
   serverName: string;
   username: string;
-  displayName: string | null;
-  channels: Channel[];
+  textChannels: Channel[];
   voiceChannels: Channel[];
-  dmChannels: DmChannel[];
-  unread: Record<number, number>;
-  activeView: ActiveView | null;
-  voiceState: { channelId: number; channelName: string; isSpeaking: boolean } | null;
-  voicePresence: Record<number, VoiceParticipant[]>;
-  speakingUserIds: Set<number>;
-  isMuted: boolean;
-  onJoinChannel: (channel: Channel) => void;
-  onJoinVoice: (channel: Channel) => void;
-  onJoinDm: (dmChannel: DmChannel) => void;
-  onToggleMute: () => void;
-  onLeaveVoice: () => void;
-  onDisplayNameChange: (name: string) => Promise<void>;
   onDisconnect: () => void;
 }
 
-export default function ChatSidebar({
-  serverName,
-  username,
-  displayName,
-  channels,
-  voiceChannels,
-  dmChannels,
-  unread,
-  activeView,
-  voiceState,
-  voicePresence,
-  speakingUserIds,
-  isMuted,
-  onJoinChannel,
-  onJoinVoice,
-  onJoinDm,
-  onToggleMute,
-  onLeaveVoice,
-  onDisplayNameChange,
-  onDisconnect,
-}: Props) {
+export default function ChatSidebar({ serverName, username, textChannels, voiceChannels, onDisconnect }: Props) {
+  const displayName = useSelector(serverStore, (s) => s.displayName);
+  const dmChannels = useSelector(serverStore, (s) => s.dmChannels);
+  const unread = useSelector(serverStore, (s) => s.unread);
+  const presences = useSelector(serverStore, (s) => s.presences);
+  const activeView = useSelector(chatStore, (s) => s.activeView);
+  const voiceState = useSelector(voiceStore, (s) => s.voiceState);
+  const speakingUserIds = useSelector(voiceStore, (s) => s.speakingUserIds);
+
+  const voicePresence = useMemo(() => {
+    const result: Record<number, VoiceParticipant[]> = {};
+    for (const [id, { metas }] of Object.entries(presences)) {
+      const meta = metas[0];
+      const vcId = meta.voice_channel_id;
+      if (vcId != null) {
+        if (!result[vcId]) result[vcId] = [];
+        result[vcId].push({ userId: parseInt(id, 10), username: meta.username, displayName: meta.display_name });
+      }
+    }
+    return result;
+  }, [presences]);
+
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [shakeEnabled, setShakeEnabledState] = useState(getShakeEnabled);
   const [soundEnabled, setSoundEnabledState] = useState(getSoundEnabled);
-
-  function handleShakeToggle(checked: boolean) {
-    setShakeEnabledState(checked);
-    setShakeEnabled(checked);
-  }
-
-  function handleSoundToggle(checked: boolean) {
-    setSoundEnabledState(checked);
-    setSoundEnabled(checked);
-  }
 
   function openSettings() {
     setNewName(displayName ?? username);
@@ -102,7 +86,7 @@ export default function ChatSidebar({
     setSaving(true);
     setError(null);
     try {
-      await onDisplayNameChange(trimmed);
+      await updateDisplayName(trimmed);
       setSettingsOpen(false);
     } catch {
       setError('Could not update display name');
@@ -127,12 +111,12 @@ export default function ChatSidebar({
             <SidebarGroupLabel>Text Channels</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {channels.map((ch) => {
+                {textChannels.map((ch) => {
                   const count = unread[ch.id] ?? 0;
                   const isActive = ch.id === activeChannelId;
                   return (
                     <SidebarMenuItem key={ch.id}>
-                      <SidebarMenuButton isActive={isActive} onClick={() => onJoinChannel(ch)}>
+                      <SidebarMenuButton isActive={isActive} onClick={() => joinChannel(ch)}>
                         <span className="text-muted-foreground">#</span>
                         <span>{ch.name}</span>
                       </SidebarMenuButton>
@@ -156,7 +140,7 @@ export default function ChatSidebar({
                     const isActive = voiceState?.channelId === ch.id;
                     return (
                       <SidebarMenuItem key={ch.id}>
-                        <SidebarMenuButton isActive={isActive} onClick={() => onJoinVoice(ch)}>
+                        <SidebarMenuButton isActive={isActive} onClick={() => joinVoiceChannel(ch)}>
                           <Volume2Icon className="size-3.5 text-muted-foreground shrink-0" />
                           <span>{ch.name}</span>
                           {participants.length > 0 && (
@@ -199,7 +183,7 @@ export default function ChatSidebar({
                     const count = unread[dm.id] ?? 0;
                     return (
                       <SidebarMenuItem key={dm.id}>
-                        <SidebarMenuButton isActive={isActive} onClick={() => onJoinDm(dm)}>
+                        <SidebarMenuButton isActive={isActive} onClick={() => joinDmChannel(dm)}>
                           <Avatar size="sm">
                             <AvatarFallback>{name[0].toUpperCase()}</AvatarFallback>
                           </Avatar>
@@ -217,15 +201,7 @@ export default function ChatSidebar({
           )}
         </SidebarContent>
 
-        {voiceState && (
-          <VoiceControls
-            channelName={voiceState.channelName}
-            isMuted={isMuted}
-            isSpeaking={voiceState.isSpeaking}
-            onToggleMute={onToggleMute}
-            onLeave={onLeaveVoice}
-          />
-        )}
+        <VoiceControls />
 
         <SidebarFooter className="border-t">
           <div className="flex items-center gap-2 px-2 py-1">
@@ -268,13 +244,14 @@ export default function ChatSidebar({
               </div>
             </section>
 
+
             <section className="flex flex-col gap-3">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Notifications</h3>
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="shakeEnabled"
                   checked={shakeEnabled}
-                  onCheckedChange={(v) => handleShakeToggle(v === true)}
+                  onCheckedChange={(v) => { setShakeEnabledState(v === true); setShakeEnabled(v === true); }}
                 />
                 <Label htmlFor="shakeEnabled">Shake window on poke</Label>
               </div>
@@ -282,7 +259,7 @@ export default function ChatSidebar({
                 <Checkbox
                   id="soundEnabled"
                   checked={soundEnabled}
-                  onCheckedChange={(v) => handleSoundToggle(v === true)}
+                  onCheckedChange={(v) => { setSoundEnabledState(v === true); setSoundEnabled(v === true); }}
                 />
                 <Label htmlFor="soundEnabled">Play sound on poke</Label>
               </div>

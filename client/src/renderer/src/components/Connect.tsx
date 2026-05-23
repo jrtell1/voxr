@@ -1,5 +1,5 @@
 import { useState, FormEvent } from 'react';
-import type { Session } from '../types';
+import type { Session } from '@/types';
 import { createSession } from '@/lib/session';
 import { getLastServer, saveServer } from '@/lib/storage';
 import { Button } from '@/components/ui/button';
