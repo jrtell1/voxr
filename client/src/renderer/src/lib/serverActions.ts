@@ -59,7 +59,7 @@ export function initServer(
     serverStore.setState((prev) => ({ ...prev, presences: Presence.syncState({}, state) }));
   });
   serverChannel.on('presence_diff', (diff) => {
-    serverStore.setState((prev) => ({ ...prev, presences: Presence.syncDiff(prev.presences, diff) }));
+    serverStore.setState((prev) => ({ ...prev, presences: { ...Presence.syncDiff(prev.presences, diff) } }));
   });
 
   return serverChannel;
