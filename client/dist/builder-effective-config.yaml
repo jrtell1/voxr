@@ -1,0 +1,15 @@
+directories:
+  output: dist
+  buildResources: resources
+appId: se.telltech.voxr
+productName: Voxr
+files:
+  - filter:
+      - out/**
+win:
+  target: nsis
+mac:
+  target: dmg
+linux:
+  target: AppImage
+electronVersion: 35.7.5
