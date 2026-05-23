@@ -1,6 +1,14 @@
 import { useMemo } from 'react';
 import { useSelector } from '@tanstack/react-store';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+} from '@/components/ui/sidebar';
 import UserPopover from './UserPopover';
 import { chatStore } from '../../stores/chatStore';
 import { serverStore } from '../../stores/serverStore';
@@ -28,24 +36,26 @@ function UserRow({ user, online, currentUsername }: {
   const chatUser: ChatUser = { id: user.userId, username: user.username, display_name: user.displayName };
 
   return (
-    <UserPopover user={chatUser} isSelf={isSelf} onPoke={sendPoke} onOpenDm={openDm}>
-      <button className="flex items-center gap-2 px-1 py-1 rounded-md w-full hover:bg-accent text-left cursor-pointer no-drag-region">
-        <div className="relative shrink-0">
-          <Avatar size="default" className={online ? '' : 'opacity-40'}>
-            <AvatarFallback>{visibleName[0].toUpperCase()}</AvatarFallback>
-          </Avatar>
-          {online && (
-            <span className="absolute bottom-0 right-0 size-2 rounded-full bg-green-500 ring-1 ring-background" />
-          )}
-        </div>
-        <div className={`flex flex-col min-w-0 ${online ? '' : 'opacity-40'}`}>
-          <span className="text-sm truncate">{visibleName}</span>
-          {user.displayName && user.displayName !== user.username && (
-            <span className="text-xs text-muted-foreground truncate">@{user.username}</span>
-          )}
-        </div>
-      </button>
-    </UserPopover>
+    <SidebarMenuItem>
+      <UserPopover user={chatUser} isSelf={isSelf} onPoke={sendPoke} onOpenDm={openDm}>
+        <SidebarMenuButton className={`no-drag-region ${online ? '' : 'opacity-50'}`}>
+          <div className="relative shrink-0">
+            <Avatar size="sm">
+              <AvatarFallback>{visibleName[0].toUpperCase()}</AvatarFallback>
+            </Avatar>
+            {online && (
+              <span className="absolute bottom-0 right-0 size-1.5 rounded-full bg-green-500 ring-1 ring-sidebar" />
+            )}
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="truncate">{visibleName}</span>
+            {user.displayName && user.displayName !== user.username && (
+              <span className="text-xs text-muted-foreground truncate">@{user.username}</span>
+            )}
+          </div>
+        </SidebarMenuButton>
+      </UserPopover>
+    </SidebarMenuItem>
   );
 }
 
@@ -68,29 +78,31 @@ export default function UserList({ username }: Props) {
   }, [onlineUsers, allUsers]);
 
   return (
-    <aside className="w-64 border-l flex flex-col shrink-0 overflow-y-auto">
-      <div className="flex flex-col p-2">
-        {onlineUsers.length > 0 && (
-          <>
-            <p className="px-1 py-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Online — {onlineUsers.length}
-            </p>
-            {onlineUsers.map((user) => (
-              <UserRow key={user.id} user={user} online currentUsername={username} />
-            ))}
-          </>
-        )}
-        {offlineUsers.length > 0 && (
-          <>
-            <p className={`px-1 py-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground ${onlineUsers.length > 0 ? 'mt-3' : ''}`}>
-              Offline — {offlineUsers.length}
-            </p>
-            {offlineUsers.map((user) => (
-              <UserRow key={user.id} user={user} online={false} currentUsername={username} />
-            ))}
-          </>
-        )}
-      </div>
+    <aside className="w-56 border-l flex flex-col shrink-0 overflow-y-auto">
+      {onlineUsers.length > 0 && (
+        <SidebarGroup>
+          <SidebarGroupLabel>Online — {onlineUsers.length}</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {onlineUsers.map((user) => (
+                <UserRow key={user.id} user={user} online currentUsername={username} />
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      )}
+      {offlineUsers.length > 0 && (
+        <SidebarGroup>
+          <SidebarGroupLabel>Offline — {offlineUsers.length}</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {offlineUsers.map((user) => (
+                <UserRow key={user.id} user={user} online={false} currentUsername={username} />
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      )}
     </aside>
   );
 }
