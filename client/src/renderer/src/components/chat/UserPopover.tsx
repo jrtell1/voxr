@@ -19,15 +19,17 @@ export default function UserPopover({ user, isSelf, onPoke, onOpenDm, children }
     <Popover>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
       <PopoverContent className="w-56 p-4" side="right" align="start">
-        <div className="flex items-center gap-3">
-          <Avatar className="size-12 text-xl">
-            <AvatarFallback>{visibleName[0].toUpperCase()}</AvatarFallback>
-          </Avatar>
-          <div className="flex flex-col items-center gap-0.5 text-center">
-            <span className="font-semibold text-lg">{visibleName}</span>
-            {user.display_name && user.display_name !== user.username && (
-              <span className="text-xs text-muted-foreground">@{user.username}</span>
-            )}
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <Avatar className="size-12 text-xl">
+              <AvatarFallback>{visibleName[0].toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col items-center gap-0.5 text-center">
+              <span className="font-semibold text-lg">{visibleName}</span>
+              {user.display_name && user.display_name !== user.username && (
+                <span className="text-xs text-muted-foreground">@{user.username}</span>
+              )}
+            </div>
           </div>
           {!isSelf && (
             <div className="flex flex-col gap-2 w-full">
