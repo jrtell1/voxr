@@ -80,7 +80,7 @@ function switchPhxChannel(topic: string, onJoinOk: (data: Record<string, unknown
     old.off('typing');
     _typingTimeouts.forEach(clearTimeout);
     _typingTimeouts.clear();
-    chatStore.setState((prev) => ({ ...prev, typingUsers: new Map(), allUsers: [] }));
+    chatStore.setState((prev) => ({ ...prev, typingUsers: new Map() }));
     old.leave().receive('ok', connect);
   } else {
     connect();
