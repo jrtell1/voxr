@@ -23,7 +23,6 @@ export default function Chat({ session, onDisconnect }: Props) {
 
   const [activeView, setActiveView] = useState<ActiveView | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
   const [unread, setUnread] = useState<Record<number, number>>(initialUnread);
   const [displayName, setDisplayName] = useState<string | null>(session.displayName);
   const [unreadStartIndex, setUnreadStartIndex] = useState<number | null>(null);
@@ -300,13 +299,9 @@ export default function Chat({ session, onDisconnect }: Props) {
     channelRef.current?.push('typing', {});
   }
 
-  function sendMessage() {
-    const content = input.trim();
-    if (!content) return;
-
+  function sendMessage(content: string) {
     if (activeView?.type === 'pending_dm') {
       const targetUser = activeView.targetUser;
-      setInput('');
       userChannel
         .push('open_dm', { user_id: targetUser.id })
         .receive('ok', ({ channel_id, other_user }: { channel_id: number; other_user: ChatUser }) => {
@@ -323,9 +318,7 @@ export default function Chat({ session, onDisconnect }: Props) {
       return;
     }
 
-    if (!channelRef.current) return;
-    channelRef.current.push('send_message', { content });
-    setInput('');
+    channelRef.current?.push('send_message', { content });
   }
 
   function handleDisplayNameChange(name: string): Promise<void> {
@@ -447,9 +440,7 @@ export default function Chat({ session, onDisconnect }: Props) {
 
               <TypingIndicator names={[...typingUsers.values()]} />
               <MessageInput
-                value={input}
                 label={messageLabel}
-                onChange={setInput}
                 onSubmit={sendMessage}
                 onTyping={sendTyping}
               />

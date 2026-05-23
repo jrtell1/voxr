@@ -1,16 +1,15 @@
-import { useRef, useEffect, type KeyboardEvent, type ChangeEvent } from 'react';
+import { useState, useRef, useEffect, type KeyboardEvent, type ChangeEvent } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Kbd } from '@/components/ui/kbd';
 
 interface Props {
-  value: string;
   label: string;
-  onChange: (value: string) => void;
-  onSubmit: () => void;
+  onSubmit: (content: string) => void;
   onTyping?: () => void;
 }
 
-export default function MessageInput({ value, label, onChange, onSubmit, onTyping }: Props) {
+export default function MessageInput({ label, onSubmit, onTyping }: Props) {
+  const [value, setValue] = useState('');
   const ref = useRef<HTMLTextAreaElement>(null);
   const lastTypingRef = useRef(0);
 
@@ -22,7 +21,7 @@ export default function MessageInput({ value, label, onChange, onSubmit, onTypin
   }, [value]);
 
   function handleChange(e: ChangeEvent<HTMLTextAreaElement>) {
-    onChange(e.target.value);
+    setValue(e.target.value);
     if (e.target.value && onTyping) {
       const now = Date.now();
       if (now - lastTypingRef.current > 2000) {
@@ -35,7 +34,11 @@ export default function MessageInput({ value, label, onChange, onSubmit, onTypin
   function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      onSubmit();
+      const content = value.trim();
+      if (content) {
+        onSubmit(content);
+        setValue('');
+      }
     }
   }
 
