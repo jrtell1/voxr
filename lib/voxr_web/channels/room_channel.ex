@@ -3,6 +3,14 @@ defmodule VoxrWeb.RoomChannel do
 
   alias Voxr.{Accounts, Chat}
 
+  intercept ["typing"]
+
+  @impl true
+  def handle_out("typing", msg, socket) do
+    push(socket, "typing", msg)
+    {:noreply, socket}
+  end
+
   @impl true
   def join("room:" <> channel_id, _params, socket) do
     channel_id = String.to_integer(channel_id)
