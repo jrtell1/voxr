@@ -88,7 +88,6 @@ export default function Connect({ onConnect }: Props) {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="your_username"
                 required
                 minLength={2}
                 maxLength={32}
