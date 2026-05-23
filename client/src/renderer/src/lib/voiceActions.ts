@@ -36,6 +36,7 @@ export function joinVoiceChannel(channel: Channel) {
 
       try {
         await room.connect(url, token);
+        await room.startAudio();
         await room.localParticipant.setMicrophoneEnabled(true);
         _room = room;
         voiceStore.setState((prev) => ({
