@@ -5,6 +5,12 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Spinner } from '@/components/ui/spinner';
 import UserPopover from './UserPopover';
 import { customEmojiStore } from '@/stores/customEmojiStore';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 
 interface Props {
   messages: Message[];
@@ -79,43 +85,59 @@ export default function MessageList({
                 <div className="flex-1 h-px bg-destructive/60" />
               </div>
             )}
-            <div className="flex gap-3 px-2 py-1 rounded-md hover:bg-muted/40 items-start">
-              <UserPopover user={msg.user} isSelf={isSelf} onPoke={onPoke} onOpenDm={onOpenDm}>
-                <button className="mt-0.5 shrink-0 cursor-pointer no-drag-region">
-                  <Avatar size="default">
-                    <AvatarFallback>{visibleName[0].toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                </button>
-              </UserPopover>
-              <div>
-                <div className="flex items-baseline gap-2 mb-0.5">
+            <ContextMenu>
+              <ContextMenuTrigger asChild>
+                <div className="flex gap-3 px-2 py-1 rounded-md hover:bg-muted/40 items-start" style={{ userSelect: 'text' }}>
                   <UserPopover user={msg.user} isSelf={isSelf} onPoke={onPoke} onOpenDm={onOpenDm}>
-                    <button className="font-semibold text-sm cursor-pointer hover:underline no-drag-region">
-                      {visibleName}
+                    <button className="mt-0.5 shrink-0 cursor-pointer no-drag-region" style={{ userSelect: 'none' }}>
+                      <Avatar size="default">
+                        <AvatarFallback>{visibleName[0].toUpperCase()}</AvatarFallback>
+                      </Avatar>
                     </button>
                   </UserPopover>
-                  <span className="text-xs text-muted-foreground">{formatTime(msg.inserted_at)}</span>
-                </div>
-                {msg.content && (
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                    {renderContent(msg.content, customEmojiMap)}
-                  </p>
-                )}
-                {msg.attachments?.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {msg.attachments.map((a, i) => {
-                      const src = `${serverUrl}${a.url}`;
-                      const imgClass = 'max-h-60 max-w-xs rounded-md border object-contain hover:opacity-90 transition-opacity';
-                      return (
-                        <a key={i} href={src} target="_blank" rel="noreferrer" className="shrink-0">
-                          <img src={src} alt={a.filename} className={imgClass} />
-                        </a>
-                      );
-                    })}
+                  <div>
+                    <div className="flex items-baseline gap-2 mb-0.5">
+                      <UserPopover user={msg.user} isSelf={isSelf} onPoke={onPoke} onOpenDm={onOpenDm}>
+                        <button className="font-semibold text-sm cursor-pointer hover:underline no-drag-region" style={{ userSelect: 'none' }}>
+                          {visibleName}
+                        </button>
+                      </UserPopover>
+                      <span className="text-xs text-muted-foreground">{formatTime(msg.inserted_at)}</span>
+                    </div>
+                    {msg.content && (
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                        {renderContent(msg.content, customEmojiMap)}
+                      </p>
+                    )}
+                    {msg.attachments?.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {msg.attachments.map((a, i) => {
+                          const src = `${serverUrl}${a.url}`;
+                          const imgClass = 'max-h-60 max-w-xs rounded-md border object-contain hover:opacity-90 transition-opacity';
+                          return (
+                            <a key={i} href={src} target="_blank" rel="noreferrer" className="shrink-0">
+                              <img src={src} alt={a.filename} className={imgClass} />
+                            </a>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
+                </div>
+              </ContextMenuTrigger>
+              <ContextMenuContent>
+                {msg.content && (
+                  <ContextMenuItem onClick={() => copyText(msg.content)}>
+                    Copy text
+                  </ContextMenuItem>
                 )}
-              </div>
-            </div>
+                {msg.attachments?.map((a, i) => (
+                  <ContextMenuItem key={i} onClick={() => copyText(`${serverUrl}${a.url}`)}>
+                    {msg.attachments.length > 1 ? `Copy image URL ${i + 1}` : 'Copy image URL'}
+                  </ContextMenuItem>
+                ))}
+              </ContextMenuContent>
+            </ContextMenu>
           </div>
         );
       })}
@@ -124,6 +146,17 @@ export default function MessageList({
   );
 }
 
+function copyText(text: string) {
+  navigator.clipboard?.writeText(text).catch(() => {
+    const el = document.createElement('textarea');
+    el.value = text;
+    el.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+  });
+}
 
 function renderContent(text: string, emojiMap: Map<string, CustomEmoji>): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
