@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, type KeyboardEvent, type ChangeEvent, type
 import { Textarea } from '@/components/ui/textarea';
 import { Kbd } from '@/components/ui/kbd';
 import { XIcon, PaperclipIcon } from 'lucide-react';
+import { searchEmoji, getEmojiQuery, type EmojiMatch } from '@/lib/emoji';
 
 interface Props {
   label: string;
@@ -16,9 +17,12 @@ export default function MessageInput({ label, onSubmit, onTyping }: Props) {
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [emojiResults, setEmojiResults] = useState<EmojiMatch[]>([]);
+  const [emojiIndex, setEmojiIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastTypingRef = useRef(0);
+  const emojiListRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -33,14 +37,50 @@ export default function MessageInput({ label, onSubmit, onTyping }: Props) {
     return () => urls.forEach(URL.revokeObjectURL);
   }, [files]);
 
+  useEffect(() => {
+    if (emojiListRef.current) {
+      const selected = emojiListRef.current.children[emojiIndex] as HTMLElement | undefined;
+      selected?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [emojiIndex]);
+
   function addFiles(incoming: File[]) {
     const images = incoming.filter((f) => f.type.startsWith('image/'));
     if (images.length > 0) setFiles((prev) => [...prev, ...images]);
   }
 
+  function insertEmoji(match: EmojiMatch) {
+    const el = textareaRef.current;
+    if (!el) return;
+    const pos = el.selectionStart ?? value.length;
+    const before = value.slice(0, pos);
+    const after = value.slice(pos);
+    const newBefore = before.replace(/:([a-zA-Z0-9_+\-]*)$/, match.native);
+    const newValue = newBefore + after;
+    setValue(newValue);
+    setEmojiResults([]);
+    setEmojiIndex(0);
+    requestAnimationFrame(() => {
+      el.selectionStart = el.selectionEnd = newBefore.length;
+      el.focus();
+    });
+  }
+
   function handleChange(e: ChangeEvent<HTMLTextAreaElement>) {
-    setValue(e.target.value);
-    if (e.target.value && onTyping) {
+    const newValue = e.target.value;
+    setValue(newValue);
+
+    const cursor = e.target.selectionStart ?? newValue.length;
+    const query = getEmojiQuery(newValue, cursor);
+    if (query !== null) {
+      const results = searchEmoji(query);
+      setEmojiResults(results);
+      setEmojiIndex(0);
+    } else {
+      setEmojiResults([]);
+    }
+
+    if (newValue && onTyping) {
       const now = Date.now();
       if (now - lastTypingRef.current > 2000) {
         lastTypingRef.current = now;
@@ -50,8 +90,6 @@ export default function MessageInput({ label, onSubmit, onTyping }: Props) {
   }
 
   function handlePaste(e: ClipboardEvent<HTMLTextAreaElement>) {
-    // Prefer clipboardData.files — these are real files (e.g. dragged from OS file manager)
-    // and preserve animated GIFs. Fall back to items for images copied from webpages.
     const fileList = Array.from(e.clipboardData.files);
     if (fileList.length > 0) {
       const images = fileList.filter((f) => f.type.startsWith('image/'));
@@ -82,6 +120,29 @@ export default function MessageInput({ label, onSubmit, onTyping }: Props) {
   }
 
   async function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if (emojiResults.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setEmojiIndex((i) => (i + 1) % emojiResults.length);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setEmojiIndex((i) => (i - 1 + emojiResults.length) % emojiResults.length);
+        return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        insertEmoji(emojiResults[emojiIndex]);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setEmojiResults([]);
+        return;
+      }
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       const content = value.trim();
@@ -122,6 +183,25 @@ export default function MessageInput({ label, onSubmit, onTyping }: Props) {
       )}
 
       <div className="relative">
+        {emojiResults.length > 0 && (
+          <div
+            ref={emojiListRef}
+            className="absolute bottom-full left-0 mb-1 w-64 max-h-52 overflow-y-auto rounded-md border bg-popover shadow-md z-50"
+          >
+            {emojiResults.map((match, i) => (
+              <button
+                key={match.shortcode}
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); insertEmoji(match); }}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-muted ${i === emojiIndex ? 'bg-muted' : ''}`}
+              >
+                <span className="text-base leading-none">{match.native}</span>
+                <span className="text-muted-foreground">:{match.shortcode}:</span>
+              </button>
+            ))}
+          </div>
+        )}
+
         <input
           ref={fileInputRef}
           type="file"

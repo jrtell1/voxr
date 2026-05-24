@@ -237,7 +237,6 @@ export default function ChatSidebar({ serverName, username, textChannels, voiceC
                   onChange={(e) => setNewName(e.target.value)}
                   placeholder={username}
                   maxLength={50}
-                  autoFocus
                 />
                 <p className="text-xs text-muted-foreground">This is how you appear in chat. Defaults to your username.</p>
               </div>
