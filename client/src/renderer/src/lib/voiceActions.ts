@@ -32,9 +32,19 @@ export function joinVoiceChannel(channel: Channel) {
       });
       room.on(RoomEvent.TrackSubscribed, (track, pub, p) => {
         console.log('[Voice] track subscribed:', track.kind, 'from', p.identity);
+        if (track.kind === 'audio') {
+          const el = track.attach();
+          el.setAttribute('data-livekit-participant', p.identity);
+          document.body.appendChild(el);
+          el.play().catch((e) => console.error('[Voice] audio play failed:', e));
+          console.log('[Voice] audio element attached for', p.identity);
+        }
       });
+
       room.on(RoomEvent.TrackUnsubscribed, (track, pub, p) => {
-        console.log('[Voice] track unsubscribed:', track.kind, 'from', p.identity);
+        if (track.kind === 'audio') {
+          track.detach().forEach((el) => el.remove());
+        }
       });
       room.on(RoomEvent.AudioPlaybackStatusChanged, () => {
         console.log('[Voice] audio playback can play:', room.canPlaybackAudio);
