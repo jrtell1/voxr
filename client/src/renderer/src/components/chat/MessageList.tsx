@@ -76,6 +76,9 @@ export default function MessageList({
       {messages.map((msg, i) => {
         const visibleName = msg.user.display_name ?? msg.user.username;
         const isSelf = msg.user.username === currentUsername;
+        const isGrouped = i > 0
+          && messages[i - 1].user.username === msg.user.username
+          && i !== unreadStartIndex;
         return (
           <div key={msg.id ?? i}>
             {i === unreadStartIndex && (
@@ -87,23 +90,30 @@ export default function MessageList({
             )}
             <ContextMenu>
               <ContextMenuTrigger asChild>
-                <div className="flex gap-3 px-2 py-1 rounded-md hover:bg-muted/40 items-start" style={{ userSelect: 'text' }}>
-                  <UserPopover user={msg.user} isSelf={isSelf} onPoke={onPoke} onOpenDm={onOpenDm}>
-                    <button className="mt-0.5 shrink-0 cursor-pointer no-drag-region" style={{ userSelect: 'none' }}>
-                      <Avatar size="default">
-                        <AvatarFallback>{visibleName[0].toUpperCase()}</AvatarFallback>
-                      </Avatar>
-                    </button>
-                  </UserPopover>
-                  <div>
-                    <div className="flex items-baseline gap-2 mb-0.5">
+                <div className={`group/msg flex gap-3 px-2 rounded-md hover:bg-muted/40 items-start ${isGrouped ? 'py-0.5' : 'py-1'}`} style={{ userSelect: 'text' }}>
+                  {isGrouped
+                    ? <span className="w-8 shrink-0 text-right text-[10px] leading-5 text-muted-foreground/0 group-hover/msg:text-muted-foreground transition-colors mt-0.5">{formatTimeShort(msg.inserted_at)}</span>
+                    : (
                       <UserPopover user={msg.user} isSelf={isSelf} onPoke={onPoke} onOpenDm={onOpenDm}>
-                        <button className="font-semibold text-sm cursor-pointer hover:underline no-drag-region" style={{ userSelect: 'none' }}>
-                          {visibleName}
+                        <button className="mt-0.5 shrink-0 cursor-pointer no-drag-region" style={{ userSelect: 'none' }}>
+                          <Avatar size="default">
+                            <AvatarFallback>{visibleName[0].toUpperCase()}</AvatarFallback>
+                          </Avatar>
                         </button>
                       </UserPopover>
-                      <span className="text-xs text-muted-foreground">{formatTime(msg.inserted_at)}</span>
-                    </div>
+                    )
+                  }
+                  <div>
+                    {!isGrouped && (
+                      <div className="flex items-baseline gap-2 mb-0.5">
+                        <UserPopover user={msg.user} isSelf={isSelf} onPoke={onPoke} onOpenDm={onOpenDm}>
+                          <button className="font-semibold text-sm cursor-pointer hover:underline no-drag-region" style={{ userSelect: 'none' }}>
+                            {visibleName}
+                          </button>
+                        </UserPopover>
+                        <span className="text-xs text-muted-foreground">{formatTime(msg.inserted_at)}</span>
+                      </div>
+                    )}
                     {msg.content && (
                       <p className="text-sm leading-relaxed whitespace-pre-wrap">
                         {renderContent(msg.content, customEmojiMap)}
@@ -191,6 +201,10 @@ function renderContent(text: string, emojiMap: Map<string, CustomEmoji>): React.
   }
 
   return parts;
+}
+
+function formatTimeShort(iso: string): string {
+  return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
 function formatTime(iso: string): string {
