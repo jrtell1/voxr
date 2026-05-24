@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useEffect, useRef } from 'react';
 import { useSelector } from '@tanstack/react-store';
 import { chatStore } from '@/stores/chatStore';
 import { sendMessage, sendTyping, loadMoreMessages, sendPoke, openDm, scrollFlags } from '@/lib/chatActions';
@@ -23,20 +23,42 @@ export default function MessageArea({ username, userId }: Props) {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const dividerRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const shouldScrollToEndRef = useRef(false);
 
   useLayoutEffect(() => {
     const container = scrollContainerRef.current;
     if (scrollFlags.prevScrollHeight !== null && container) {
       container.scrollTop = container.scrollHeight - scrollFlags.prevScrollHeight;
       scrollFlags.prevScrollHeight = null;
+      shouldScrollToEndRef.current = false;
       return;
     }
     if (scrollFlags.scrollToUnread && dividerRef.current) {
       dividerRef.current.scrollIntoView();
       scrollFlags.scrollToUnread = false;
+      shouldScrollToEndRef.current = false;
     } else {
       messagesEndRef.current?.scrollIntoView();
+      shouldScrollToEndRef.current = true;
     }
+  }, [messages]);
+
+  useEffect(() => {
+    if (!shouldScrollToEndRef.current) return;
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const imgs = Array.from(container.querySelectorAll<HTMLImageElement>('img')).filter((img) => !img.complete);
+    if (imgs.length === 0) return;
+
+    const handleLoad = () => {
+      if (shouldScrollToEndRef.current) {
+        messagesEndRef.current?.scrollIntoView();
+      }
+    };
+
+    imgs.forEach((img) => img.addEventListener('load', handleLoad));
+    return () => imgs.forEach((img) => img.removeEventListener('load', handleLoad));
   }, [messages]);
 
   function handleLoadMore() {
