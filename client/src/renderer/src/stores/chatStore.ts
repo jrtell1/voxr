@@ -10,6 +10,7 @@ interface ChatState {
   hasMore: boolean;
   loadingMore: boolean;
   unreadStartIndex: number | null;
+  serverUrl: string;
 }
 
 export const chatStore = new Store<ChatState>({
@@ -20,4 +21,5 @@ export const chatStore = new Store<ChatState>({
   hasMore: false,
   loadingMore: false,
   unreadStartIndex: null,
+  serverUrl: '',
 });

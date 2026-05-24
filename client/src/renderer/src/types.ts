@@ -12,11 +12,18 @@ export interface ChatUser {
   display_name: string | null;
 }
 
+export interface Attachment {
+  url: string;
+  filename: string;
+  content_type: string;
+}
+
 export interface Message {
   id: number;
   content: string;
   inserted_at: string;
   user: ChatUser;
+  attachments: Attachment[];
 }
 
 export interface VoiceParticipant {

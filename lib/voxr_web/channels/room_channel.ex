@@ -64,13 +64,19 @@ defmodule VoxrWeb.RoomChannel do
   end
 
   @impl true
-  def handle_in("send_message", %{"content" => content}, socket) do
+  def handle_in("send_message", params, socket) do
     user = socket.assigns.current_user
     channel_id = socket.assigns.channel_id
+    content = Map.get(params, "content", "")
 
-    case Chat.create_message(%{content: content, user_id: user.id, channel_id: channel_id}) do
+    attachments =
+      params
+      |> Map.get("attachments", [])
+      |> Enum.map(fn a -> %{url: a["url"], filename: a["filename"], content_type: a["content_type"]} end)
+
+    case Chat.create_message(%{content: content, user_id: user.id, channel_id: channel_id, attachments: attachments}) do
       {:ok, _message} -> {:reply, :ok, socket}
-      {:error, _changeset} -> {:reply, {:error, %{reason: "invalid message"}}, socket}
+      {:error, _} -> {:reply, {:error, %{reason: "invalid message"}}, socket}
     end
   end
 
@@ -91,7 +97,10 @@ defmodule VoxrWeb.RoomChannel do
         id: message.user.id,
         username: message.user.username,
         display_name: message.user.display_name
-      }
+      },
+      attachments: Enum.map(message.attachments, fn a ->
+        %{url: a.url, filename: a.filename, content_type: a.content_type}
+      end)
     }
   end
 end

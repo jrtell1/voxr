@@ -17,6 +17,7 @@ export default function MessageArea({ username }: Props) {
   const hasMore = useSelector(chatStore, (s) => s.hasMore);
   const loadingMore = useSelector(chatStore, (s) => s.loadingMore);
   const activeView = useSelector(chatStore, (s) => s.activeView);
+  const serverUrl = useSelector(chatStore, (s) => s.serverUrl);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const dividerRef = useRef<HTMLDivElement | null>(null);
@@ -59,6 +60,7 @@ export default function MessageArea({ username }: Props) {
         dividerRef={dividerRef}
         scrollContainerRef={scrollContainerRef}
         currentUsername={username}
+        serverUrl={serverUrl}
         hasMore={hasMore}
         loadingMore={loadingMore}
         onLoadMore={handleLoadMore}

@@ -11,6 +11,7 @@ interface Props {
   dividerRef: RefObject<HTMLDivElement | null>;
   scrollContainerRef: RefObject<HTMLDivElement | null>;
   currentUsername: string;
+  serverUrl: string;
   hasMore: boolean;
   loadingMore: boolean;
   onLoadMore: () => void;
@@ -25,6 +26,7 @@ export default function MessageList({
   dividerRef,
   scrollContainerRef,
   currentUsername,
+  serverUrl,
   hasMore,
   loadingMore,
   onLoadMore,
@@ -87,7 +89,25 @@ export default function MessageList({
                   </UserPopover>
                   <span className="text-xs text-muted-foreground">{formatTime(msg.inserted_at)}</span>
                 </div>
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                {msg.content && (
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                )}
+                {msg.attachments?.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {msg.attachments.map((a, i) => {
+                      const src = `${serverUrl}${a.url}`;
+                      return (
+                        <a key={i} href={src} target="_blank" rel="noreferrer" className="shrink-0">
+                          <img
+                            src={src}
+                            alt={a.filename}
+                            className="max-h-60 max-w-xs rounded-md border object-contain hover:opacity-90 transition-opacity"
+                          />
+                        </a>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           </div>

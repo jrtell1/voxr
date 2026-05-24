@@ -5,6 +5,11 @@ defmodule VoxrWeb.Endpoint do
     websocket: true,
     longpoll: false
 
+  plug Plug.Static,
+    at: "/uploads",
+    from: {:voxr, "priv/static/uploads"},
+    gzip: false
+
   plug CORSPlug, origin: "*"
 
   plug Plug.RequestId

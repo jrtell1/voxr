@@ -1,7 +1,7 @@
 defmodule Voxr.Chat do
   import Ecto.Query
   alias Voxr.Repo
-  alias Voxr.Chat.{Channel, Message, ChannelRead, ChannelMember}
+  alias Voxr.Chat.{Channel, Message, MessageAttachment, ChannelRead, ChannelMember}
 
   def list_channels do
     Channel
@@ -31,7 +31,7 @@ defmodule Voxr.Chat do
       |> where(channel_id: ^channel_id)
       |> order_by(desc: :id)
       |> limit(^(limit + 1))
-      |> preload(:user)
+      |> preload([:user, :attachments])
 
     query = if before_id, do: where(query, [m], m.id < ^before_id), else: query
 
@@ -42,20 +42,35 @@ defmodule Voxr.Chat do
   end
 
   def create_message(attrs) do
-    result =
-      %Message{}
-      |> Message.changeset(attrs)
-      |> Repo.insert()
+    attachments = Map.get(attrs, :attachments, [])
+    content = Map.get(attrs, :content, "")
 
-    case result do
-      {:ok, message} ->
-        message = Repo.preload(message, :user)
-        Phoenix.PubSub.broadcast(Voxr.PubSub, "room:#{message.channel_id}", {:new_message, message})
-        broadcast_unread_updates(message)
-        {:ok, message}
+    if content == "" and attachments == [] do
+      {:error, :empty_message}
+    else
+      result =
+        %Message{}
+        |> Message.changeset(attrs)
+        |> Repo.insert()
 
-      error ->
-        error
+      case result do
+        {:ok, message} ->
+          if attachments != [] do
+            now = DateTime.utc_now(:second)
+            rows = Enum.map(attachments, fn a ->
+              %{message_id: message.id, url: a.url, filename: a.filename, content_type: a.content_type, inserted_at: now}
+            end)
+            Repo.insert_all(MessageAttachment, rows)
+          end
+
+          message = Repo.preload(message, [:user, :attachments])
+          Phoenix.PubSub.broadcast(Voxr.PubSub, "room:#{message.channel_id}", {:new_message, message})
+          broadcast_unread_updates(message)
+          {:ok, message}
+
+        error ->
+          error
+      end
     end
   end
 

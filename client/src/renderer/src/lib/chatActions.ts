@@ -1,5 +1,5 @@
 import type { Socket, Channel as PhxChannel } from 'phoenix';
-import type { Channel, DmChannel, ChatUser, Message } from '../types';
+import type { Attachment, Channel, DmChannel, ChatUser, Message } from '../types';
 import { chatStore } from '@/stores/chatStore';
 import { serverStore } from '@/stores/serverStore';
 import { saveLastChannel } from './storage';
@@ -8,6 +8,7 @@ let _socket: Socket | null = null;
 let _userChannel: PhxChannel | null = null;
 let _channelRef: PhxChannel | null = null;
 let _serverUrl = '';
+let _token = '';
 const _typingTimeouts = new Map<number, ReturnType<typeof setTimeout>>();
 
 export const scrollFlags = {
@@ -15,10 +16,12 @@ export const scrollFlags = {
   prevScrollHeight: null as number | null,
 };
 
-export function initChat(socket: Socket, userChannel: PhxChannel, serverUrl: string) {
+export function initChat(socket: Socket, userChannel: PhxChannel, serverUrl: string, token: string) {
   _socket = socket;
   _userChannel = userChannel;
   _serverUrl = serverUrl;
+  _token = token;
+  chatStore.setState((prev) => ({ ...prev, serverUrl }));
 }
 
 function doJoin(topic: string, onJoinOk: (data: Record<string, unknown>) => void) {
@@ -174,8 +177,29 @@ export function loadMoreMessages() {
     });
 }
 
-export function sendMessage(content: string) {
+export async function uploadAttachment(file: File): Promise<Attachment> {
+  const form = new FormData();
+  form.append('file', file);
+  const res = await fetch(`${_serverUrl}/api/upload`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${_token}` },
+    body: form,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Upload failed' }));
+    throw new Error(err.error ?? 'Upload failed');
+  }
+  return res.json();
+}
+
+export async function sendMessage(content: string, files: File[] = []) {
   const { activeView } = chatStore.state;
+
+  const attachments: Attachment[] = files.length > 0
+    ? await Promise.all(files.map(uploadAttachment))
+    : [];
+
+  const payload = { content, attachments };
 
   if (activeView?.type === 'pending_dm') {
     const targetUser = activeView.targetUser;
@@ -195,13 +219,13 @@ export function sendMessage(content: string) {
             unreadStartIndex: null,
           }));
           scrollFlags.scrollToUnread = false;
-          _channelRef?.push('send_message', { content });
+          _channelRef?.push('send_message', payload);
         });
       });
     return;
   }
 
-  _channelRef?.push('send_message', { content });
+  _channelRef?.push('send_message', payload);
 }
 
 export function sendTyping() {
@@ -224,6 +248,8 @@ export function cleanupChat() {
   _typingTimeouts.clear();
   _socket = null;
   _userChannel = null;
+  _serverUrl = '';
+  _token = '';
   chatStore.setState(() => ({
     activeView: null,
     messages: [],
@@ -232,5 +258,6 @@ export function cleanupChat() {
     hasMore: false,
     loadingMore: false,
     unreadStartIndex: null,
+    serverUrl: '',
   }));
 }

@@ -13,5 +13,6 @@ defmodule VoxrWeb.Router do
     get "/info", ServerController, :info
     get "/channels", ChannelController, :index
     get "/channels/:id/messages", MessageController, :index
+    post "/upload", UploadController, :create
   end
 end

@@ -28,7 +28,7 @@ export default function Chat({ session, onDisconnect }: Props) {
 
   useEffect(() => {
     const serverChannel = initServer(socket, userChannel, initialUnread, session.dmChannels, session.displayName);
-    initChat(socket, userChannel, serverUrl);
+    initChat(socket, userChannel, serverUrl, session.token);
     initVoice(serverChannel);
 
     const lastChannelId = getLastChannel(serverUrl);

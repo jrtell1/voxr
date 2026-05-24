@@ -3,10 +3,11 @@ defmodule Voxr.Chat.Message do
   import Ecto.Changeset
 
   schema "messages" do
-    field :content, :string
+    field :content, :string, default: ""
 
     belongs_to :user, Voxr.Accounts.User
     belongs_to :channel, Voxr.Chat.Channel
+    has_many :attachments, Voxr.Chat.MessageAttachment
 
     timestamps(type: :utc_datetime, updated_at: false)
   end
@@ -14,7 +15,7 @@ defmodule Voxr.Chat.Message do
   def changeset(message, attrs) do
     message
     |> cast(attrs, [:content, :user_id, :channel_id])
-    |> validate_required([:content, :user_id, :channel_id])
-    |> validate_length(:content, min: 1, max: 4000)
+    |> validate_required([:user_id, :channel_id])
+    |> validate_length(:content, max: 4000)
   end
 end
