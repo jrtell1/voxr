@@ -96,13 +96,10 @@ export default function MessageList({
                   <div className="flex flex-wrap gap-2 mt-1">
                     {msg.attachments.map((a, i) => {
                       const src = `${serverUrl}${a.url}`;
+                      const imgClass = 'max-h-60 max-w-xs rounded-md border object-contain hover:opacity-90 transition-opacity';
                       return (
                         <a key={i} href={src} target="_blank" rel="noreferrer" className="shrink-0">
-                          <img
-                            src={src}
-                            alt={a.filename}
-                            className="max-h-60 max-w-xs rounded-md border object-contain hover:opacity-90 transition-opacity"
-                          />
+                          <img src={src} alt={a.filename} className={imgClass} />
                         </a>
                       );
                     })}
@@ -117,6 +114,7 @@ export default function MessageList({
     </div>
   );
 }
+
 
 function formatTime(iso: string): string {
   const date = new Date(iso);

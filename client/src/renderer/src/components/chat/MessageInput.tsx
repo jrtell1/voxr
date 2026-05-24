@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, type KeyboardEvent, type ChangeEvent, type ClipboardEvent } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Kbd } from '@/components/ui/kbd';
-import { XIcon, ImageIcon } from 'lucide-react';
+import { XIcon, PaperclipIcon } from 'lucide-react';
 
 interface Props {
   label: string;
@@ -9,16 +9,19 @@ interface Props {
   onTyping?: () => void;
 }
 
+const ACCEPTED = 'image/jpeg,image/png,image/gif,image/webp';
+
 export default function MessageInput({ label, onSubmit, onTyping }: Props) {
   const [value, setValue] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
-  const ref = useRef<HTMLTextAreaElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const lastTypingRef = useRef(0);
 
   useEffect(() => {
-    const el = ref.current;
+    const el = textareaRef.current;
     if (!el) return;
     el.style.height = 'auto';
     el.style.height = `${el.scrollHeight}px`;
@@ -29,6 +32,11 @@ export default function MessageInput({ label, onSubmit, onTyping }: Props) {
     setPreviews(urls);
     return () => urls.forEach(URL.revokeObjectURL);
   }, [files]);
+
+  function addFiles(incoming: File[]) {
+    const images = incoming.filter((f) => f.type.startsWith('image/'));
+    if (images.length > 0) setFiles((prev) => [...prev, ...images]);
+  }
 
   function handleChange(e: ChangeEvent<HTMLTextAreaElement>) {
     setValue(e.target.value);
@@ -42,13 +50,31 @@ export default function MessageInput({ label, onSubmit, onTyping }: Props) {
   }
 
   function handlePaste(e: ClipboardEvent<HTMLTextAreaElement>) {
+    // Prefer clipboardData.files — these are real files (e.g. dragged from OS file manager)
+    // and preserve animated GIFs. Fall back to items for images copied from webpages.
+    const fileList = Array.from(e.clipboardData.files);
+    if (fileList.length > 0) {
+      const images = fileList.filter((f) => f.type.startsWith('image/'));
+      if (images.length > 0) {
+        e.preventDefault();
+        addFiles(images);
+        return;
+      }
+    }
+
     const imageItems = Array.from(e.clipboardData.items).filter((item) =>
       item.type.startsWith('image/')
     );
     if (imageItems.length === 0) return;
     e.preventDefault();
-    const newFiles = imageItems.map((item) => item.getAsFile()).filter((f): f is File => f !== null);
-    setFiles((prev) => [...prev, ...newFiles]);
+    addFiles(imageItems.map((item) => item.getAsFile()).filter((f): f is File => f !== null));
+  }
+
+  function handleFileInput(e: ChangeEvent<HTMLInputElement>) {
+    if (e.target.files) {
+      addFiles(Array.from(e.target.files));
+      e.target.value = '';
+    }
   }
 
   function removeFile(index: number) {
@@ -96,23 +122,38 @@ export default function MessageInput({ label, onSubmit, onTyping }: Props) {
       )}
 
       <div className="relative">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={ACCEPTED}
+          multiple
+          className="hidden"
+          onChange={handleFileInput}
+        />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="absolute left-2 bottom-2 size-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+          title="Attach image"
+        >
+          <PaperclipIcon className="size-3.5" />
+        </button>
         <Textarea
-          ref={ref}
+          ref={textareaRef}
           value={value}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
           placeholder={`Message ${label}`}
-          className="resize-none overflow-hidden min-h-11 max-h-40 py-2.5 pr-14"
+          className="resize-none overflow-hidden min-h-11 max-h-40 py-2.5 pl-10 pr-14"
           rows={1}
           autoFocus
           disabled={uploading}
         />
         {uploading
           ? <span className="absolute bottom-2.5 right-3 text-xs text-muted-foreground">Uploading…</span>
-          : files.length > 0
-            ? <span className="absolute bottom-2.5 right-3 flex items-center gap-1 text-xs text-muted-foreground"><ImageIcon className="size-3" />{files.length}</span>
-            : <Kbd className="absolute bottom-2 right-2 h-7 px-2.5 text-sm">↵</Kbd>
+          : <Kbd className="absolute bottom-2 right-2 h-7 px-2.5 text-sm">↵</Kbd>
         }
       </div>
     </div>
