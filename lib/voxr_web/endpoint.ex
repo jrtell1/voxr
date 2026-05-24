@@ -10,6 +10,11 @@ defmodule VoxrWeb.Endpoint do
     from: {:voxr, "priv/static/uploads"},
     gzip: false
 
+  plug Plug.Static,
+    at: "/emojis",
+    from: {:voxr, "priv/static/emojis"},
+    gzip: false
+
   plug CORSPlug, origin: "*"
 
   plug Plug.RequestId

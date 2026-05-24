@@ -14,5 +14,9 @@ defmodule VoxrWeb.Router do
     get "/channels", ChannelController, :index
     get "/channels/:id/messages", MessageController, :index
     post "/upload", UploadController, :create
+
+    get "/emojis", EmojiController, :index
+    post "/emojis", EmojiController, :create
+    delete "/emojis/:id", EmojiController, :delete
   end
 end

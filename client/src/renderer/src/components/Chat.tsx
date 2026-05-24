@@ -12,6 +12,7 @@ import { serverStore } from '@/stores/serverStore';
 import { initChat, joinChannel, cleanupChat } from '@/lib/chatActions';
 import { initServer, cleanupServer } from '@/lib/serverActions';
 import { initVoice, cleanupVoice } from '@/lib/voiceActions';
+import { initCustomEmojis } from '@/lib/customEmojiActions';
 
 interface Props {
   session: Session;
@@ -30,6 +31,7 @@ export default function Chat({ session, onDisconnect }: Props) {
     const serverChannel = initServer(socket, userChannel, initialUnread, session.dmChannels, session.displayName);
     initChat(socket, userChannel, serverUrl, session.token);
     initVoice(serverChannel);
+    initCustomEmojis(serverUrl, session.token);
 
     const lastChannelId = getLastChannel(serverUrl);
     if (lastChannelId) {

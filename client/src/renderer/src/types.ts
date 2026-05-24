@@ -42,6 +42,13 @@ export type ActiveView =
   | { type: 'dm'; dmChannel: DmChannel }
   | { type: 'pending_dm'; targetUser: ChatUser };
 
+export interface CustomEmoji {
+  id: number;
+  shortcode: string;
+  url: string;
+  content_type: string;
+}
+
 export interface Session {
   socket: Socket;
   userChannel: PhxChannel;

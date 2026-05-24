@@ -1,8 +1,10 @@
-import { useEffect, useRef, type RefObject } from 'react';
-import type { Message, ChatUser } from '../../types';
+import React, { useEffect, useRef, useMemo, type RefObject } from 'react';
+import { useSelector } from '@tanstack/react-store';
+import type { Message, ChatUser, CustomEmoji } from '../../types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Spinner } from '@/components/ui/spinner';
 import UserPopover from './UserPopover';
+import { customEmojiStore } from '@/stores/customEmojiStore';
 
 interface Props {
   messages: Message[];
@@ -38,6 +40,11 @@ export default function MessageList({
   onLoadMoreRef.current = onLoadMore;
   const loadingMoreRef = useRef(loadingMore);
   loadingMoreRef.current = loadingMore;
+  const customEmojis = useSelector(customEmojiStore, (s) => s.emojis);
+  const customEmojiMap = useMemo(
+    () => new Map(customEmojis.map((e) => [e.shortcode, e])),
+    [customEmojis]
+  );
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -90,7 +97,9 @@ export default function MessageList({
                   <span className="text-xs text-muted-foreground">{formatTime(msg.inserted_at)}</span>
                 </div>
                 {msg.content && (
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                    {renderContent(msg.content, customEmojiMap)}
+                  </p>
                 )}
                 {msg.attachments?.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-1">
@@ -115,6 +124,41 @@ export default function MessageList({
   );
 }
 
+
+function renderContent(text: string, emojiMap: Map<string, CustomEmoji>): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  const regex = /:([a-z0-9_]+):/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let key = 0;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    const emoji = emojiMap.get(match[1]);
+    if (emoji) {
+      parts.push(
+        <img
+          key={key++}
+          src={emoji.url}
+          alt={`:${emoji.shortcode}:`}
+          title={`:${emoji.shortcode}:`}
+          className="inline-block h-5 w-auto align-middle mx-0.5"
+        />
+      );
+    } else {
+      parts.push(match[0]);
+    }
+    lastIndex = regex.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts;
+}
 
 function formatTime(iso: string): string {
   const date = new Date(iso);

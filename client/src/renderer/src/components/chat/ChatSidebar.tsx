@@ -1,4 +1,4 @@
-import { useState, useMemo, FormEvent } from 'react';
+import { useState, useMemo, useRef, FormEvent, ChangeEvent } from 'react';
 import { useSelector } from '@tanstack/react-store';
 import type { Channel, VoiceParticipant } from '@/types';
 import {
@@ -25,7 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { LogOutIcon, SettingsIcon, Volume2Icon } from 'lucide-react';
+import { LogOutIcon, SettingsIcon, Volume2Icon, TrashIcon, PlusIcon } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { getShakeEnabled, setShakeEnabled, getSoundEnabled, setSoundEnabled } from '@/lib/storage';
 import VoiceControls from './VoiceControls';
@@ -35,6 +35,8 @@ import { voiceStore } from '@/stores/voiceStore';
 import { joinChannel, joinDmChannel } from '@/lib/chatActions';
 import { joinVoiceChannel } from '@/lib/voiceActions';
 import { updateDisplayName } from '@/lib/serverActions';
+import { uploadCustomEmoji, deleteCustomEmoji } from '@/lib/customEmojiActions';
+import { customEmojiStore } from '@/stores/customEmojiStore';
 
 interface Props {
   serverName: string;
@@ -66,12 +68,20 @@ export default function ChatSidebar({ serverName, username, textChannels, voiceC
     return result;
   }, [presences]);
 
+  const customEmojis = useSelector(customEmojiStore, (s) => s.emojis);
+
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [shakeEnabled, setShakeEnabledState] = useState(getShakeEnabled);
   const [soundEnabled, setSoundEnabledState] = useState(getSoundEnabled);
+
+  const [emojiShortcode, setEmojiShortcode] = useState('');
+  const [emojiFile, setEmojiFile] = useState<File | null>(null);
+  const [emojiUploading, setEmojiUploading] = useState(false);
+  const [emojiError, setEmojiError] = useState<string | null>(null);
+  const emojiFileRef = useRef<HTMLInputElement>(null);
 
   function openSettings() {
     setNewName(displayName ?? username);
@@ -92,6 +102,27 @@ export default function ChatSidebar({ serverName, username, textChannels, voiceC
       setError('Could not update display name');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleEmojiUpload() {
+    if (!emojiFile || !emojiShortcode.trim()) return;
+    const code = emojiShortcode.trim().toLowerCase();
+    if (!/^[a-z0-9_]{2,32}$/.test(code)) {
+      setEmojiError('Shortcode must be 2–32 chars: lowercase letters, digits, underscores');
+      return;
+    }
+    setEmojiUploading(true);
+    setEmojiError(null);
+    try {
+      await uploadCustomEmoji(code, emojiFile);
+      setEmojiShortcode('');
+      setEmojiFile(null);
+      if (emojiFileRef.current) emojiFileRef.current.value = '';
+    } catch (e: unknown) {
+      setEmojiError(e instanceof Error ? e.message : 'Upload failed');
+    } finally {
+      setEmojiUploading(false);
     }
   }
 
@@ -260,6 +291,66 @@ export default function ChatSidebar({ serverName, username, textChannels, voiceC
                   onCheckedChange={(v) => { setSoundEnabledState(v === true); setSoundEnabled(v === true); }}
                 />
                 <Label htmlFor="soundEnabled">Play sound on poke</Label>
+              </div>
+            </section>
+
+            <section className="flex flex-col gap-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Custom Emojis</h3>
+
+              {customEmojis.length > 0 && (
+                <div className="flex flex-col gap-1 max-h-40 overflow-y-auto pr-1">
+                  {customEmojis.map((emoji) => (
+                    <div key={emoji.id} className="flex items-center gap-2 rounded-md px-2 py-1 hover:bg-muted group">
+                      <img src={emoji.url} alt={emoji.shortcode} className="size-6 object-contain shrink-0" />
+                      <span className="text-sm flex-1 truncate">:{emoji.shortcode}:</span>
+                      <button
+                        type="button"
+                        onClick={() => deleteCustomEmoji(emoji.id)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                      >
+                        <TrashIcon className="size-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="shortcode"
+                    value={emojiShortcode}
+                    onChange={(e) => setEmojiShortcode(e.target.value)}
+                    className="flex-1"
+                    maxLength={32}
+                  />
+                  <input
+                    ref={emojiFileRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    className="hidden"
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setEmojiFile(e.target.files?.[0] ?? null)}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => emojiFileRef.current?.click()}
+                    className="shrink-0"
+                  >
+                    {emojiFile ? emojiFile.name.slice(0, 12) + (emojiFile.name.length > 12 ? '…' : '') : 'Choose file'}
+                  </Button>
+                </div>
+                {emojiError && <p className="text-xs text-destructive">{emojiError}</p>}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleEmojiUpload}
+                  disabled={emojiUploading || !emojiFile || !emojiShortcode.trim()}
+                  className="self-start"
+                >
+                  <PlusIcon className="size-3.5" />
+                  {emojiUploading ? 'Uploading…' : 'Add emoji'}
+                </Button>
               </div>
             </section>
 

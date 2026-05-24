@@ -1,7 +1,7 @@
 defmodule Voxr.Chat do
   import Ecto.Query
   alias Voxr.Repo
-  alias Voxr.Chat.{Channel, Message, MessageAttachment, ChannelRead, ChannelMember}
+  alias Voxr.Chat.{Channel, Message, MessageAttachment, ChannelRead, ChannelMember, CustomEmoji}
 
   def list_channels do
     Channel
@@ -196,6 +196,30 @@ defmodule Voxr.Chat do
     |> where([c], c.type == "dm")
     |> limit(1)
     |> Repo.one()
+  end
+
+  # Custom emojis
+
+  def list_custom_emojis do
+    Repo.all(CustomEmoji)
+  end
+
+  def create_custom_emoji(attrs) do
+    %CustomEmoji{}
+    |> CustomEmoji.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  def delete_custom_emoji(id) do
+    case Repo.get(CustomEmoji, id) do
+      nil ->
+        {:error, :not_found}
+
+      emoji ->
+        file_path = Path.join(:code.priv_dir(:voxr), "static#{emoji.url}")
+        File.rm(file_path)
+        Repo.delete(emoji)
+    end
   end
 
   defp broadcast_unread_updates(message) do

@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect, type KeyboardEvent, type ChangeEvent, type ClipboardEvent } from 'react';
+import { useSelector } from '@tanstack/react-store';
 import { Textarea } from '@/components/ui/textarea';
 import { Kbd } from '@/components/ui/kbd';
 import { XIcon, PaperclipIcon } from 'lucide-react';
 import { searchEmoji, getEmojiQuery, type EmojiMatch } from '@/lib/emoji';
+import { customEmojiStore } from '@/stores/customEmojiStore';
 
 interface Props {
   label: string;
@@ -23,6 +25,7 @@ export default function MessageInput({ label, onSubmit, onTyping }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastTypingRef = useRef(0);
   const emojiListRef = useRef<HTMLDivElement>(null);
+  const customEmojis = useSelector(customEmojiStore, (s) => s.emojis);
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -55,7 +58,9 @@ export default function MessageInput({ label, onSubmit, onTyping }: Props) {
     const pos = el.selectionStart ?? value.length;
     const before = value.slice(0, pos);
     const after = value.slice(pos);
-    const newBefore = before.replace(/:([a-zA-Z0-9_+\-]*)$/, match.native);
+    // Standard emoji: insert Unicode char. Custom emoji: insert :shortcode: syntax.
+    const insert = match.kind === 'standard' ? match.native : `:${match.shortcode}:`;
+    const newBefore = before.replace(/:([a-zA-Z0-9_+\-]*)$/, insert);
     const newValue = newBefore + after;
     setValue(newValue);
     setEmojiResults([]);
@@ -73,8 +78,7 @@ export default function MessageInput({ label, onSubmit, onTyping }: Props) {
     const cursor = e.target.selectionStart ?? newValue.length;
     const query = getEmojiQuery(newValue, cursor);
     if (query !== null) {
-      const results = searchEmoji(query);
-      setEmojiResults(results);
+      setEmojiResults(searchEmoji(query, customEmojis));
       setEmojiIndex(0);
     } else {
       setEmojiResults([]);
@@ -195,8 +199,11 @@ export default function MessageInput({ label, onSubmit, onTyping }: Props) {
                 onMouseDown={(e) => { e.preventDefault(); insertEmoji(match); }}
                 className={`w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-muted ${i === emojiIndex ? 'bg-muted' : ''}`}
               >
-                <span className="text-base leading-none">{match.native}</span>
-                <span className="text-muted-foreground">:{match.shortcode}:</span>
+                {match.kind === 'custom'
+                  ? <img src={match.url} alt={match.shortcode} className="size-5 object-contain shrink-0" />
+                  : <span className="text-base leading-none w-5 text-center shrink-0">{match.native}</span>
+                }
+                <span className="text-muted-foreground truncate">:{match.shortcode}:</span>
               </button>
             ))}
           </div>
