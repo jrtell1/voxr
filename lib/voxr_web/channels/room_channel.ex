@@ -6,12 +6,6 @@ defmodule VoxrWeb.RoomChannel do
   intercept ["typing"]
 
   @impl true
-  def handle_out("typing", msg, socket) do
-    push(socket, "typing", msg)
-    {:noreply, socket}
-  end
-
-  @impl true
   def join("room:" <> channel_id, _params, socket) do
     channel_id = String.to_integer(channel_id)
     channel = Chat.get_channel!(channel_id)
@@ -43,15 +37,6 @@ defmodule VoxrWeb.RoomChannel do
     {:reply, {:ok, %{messages: Enum.map(messages, &serialize_message/1), has_more: has_more}}, socket}
   end
 
-  @impl true
-  def handle_info({:new_message, message}, socket) do
-    push(socket, "new_message", serialize_message(message))
-    Chat.mark_read(socket.assigns.current_user.id, socket.assigns.channel_id)
-    push(socket, "unread_updated", %{channel_id: socket.assigns.channel_id, count: 0})
-    {:noreply, socket}
-  end
-
-  @impl true
   def handle_in("typing", _params, socket) do
     user = socket.assigns.current_user
 
@@ -63,7 +48,6 @@ defmodule VoxrWeb.RoomChannel do
     {:noreply, socket}
   end
 
-  @impl true
   def handle_in("send_message", params, socket) do
     user = socket.assigns.current_user
     channel_id = socket.assigns.channel_id
@@ -78,6 +62,20 @@ defmodule VoxrWeb.RoomChannel do
       {:ok, _message} -> {:reply, :ok, socket}
       {:error, _} -> {:reply, {:error, %{reason: "invalid message"}}, socket}
     end
+  end
+
+  @impl true
+  def handle_out("typing", msg, socket) do
+    push(socket, "typing", msg)
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:new_message, message}, socket) do
+    push(socket, "new_message", serialize_message(message))
+    Chat.mark_read(socket.assigns.current_user.id, socket.assigns.channel_id)
+    push(socket, "unread_updated", %{channel_id: socket.assigns.channel_id, count: 0})
+    {:noreply, socket}
   end
 
   defp serialize_user(user) do
