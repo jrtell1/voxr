@@ -48,6 +48,19 @@ defmodule VoxrWeb.RoomChannel do
     {:noreply, socket}
   end
 
+  def handle_in("react", %{"message_id" => message_id, "emoji" => emoji}, socket) do
+    user = socket.assigns.current_user
+    reactions = Chat.toggle_reaction(user.id, message_id, emoji)
+
+    Phoenix.PubSub.broadcast(
+      Voxr.PubSub,
+      "room:#{socket.assigns.channel_id}",
+      {:reaction_updated, message_id, reactions}
+    )
+
+    {:noreply, socket}
+  end
+
   def handle_in("send_message", params, socket) do
     user = socket.assigns.current_user
     channel_id = socket.assigns.channel_id
@@ -71,6 +84,11 @@ defmodule VoxrWeb.RoomChannel do
   end
 
   @impl true
+  def handle_info({:reaction_updated, message_id, reactions}, socket) do
+    push(socket, "reaction_updated", %{message_id: message_id, reactions: reactions})
+    {:noreply, socket}
+  end
+
   def handle_info({:new_message, message}, socket) do
     push(socket, "new_message", serialize_message(message))
     Chat.mark_read(socket.assigns.current_user.id, socket.assigns.channel_id)
@@ -98,7 +116,16 @@ defmodule VoxrWeb.RoomChannel do
       },
       attachments: Enum.map(message.attachments, fn a ->
         %{url: a.url, filename: a.filename, content_type: a.content_type}
-      end)
+      end),
+      reactions: serialize_reactions(message.reactions)
     }
+  end
+
+  defp serialize_reactions(reactions) do
+    reactions
+    |> Enum.group_by(& &1.emoji)
+    |> Enum.map(fn {emoji, rs} ->
+      %{emoji: emoji, count: length(rs), user_ids: Enum.map(rs, & &1.user_id)}
+    end)
   end
 end

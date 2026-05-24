@@ -14,6 +14,7 @@ defmodule VoxrWeb.UserChannel do
 
     {:ok,
      %{
+       user_id: user.id,
        unread_counts: unread,
        display_name: user.display_name,
        dm_channels: Enum.map(dm_channels, &serialize_dm_channel(&1, user.id))

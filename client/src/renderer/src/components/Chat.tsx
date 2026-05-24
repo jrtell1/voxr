@@ -95,7 +95,7 @@ export default function Chat({ session, onDisconnect }: Props) {
 
         <div className="flex flex-row flex-1 min-h-0 overflow-hidden">
           {activeView ? (
-            <MessageArea username={username} />
+            <MessageArea username={username} userId={session.userId} />
           ) : (
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
               Select a channel to start chatting

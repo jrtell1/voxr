@@ -1,7 +1,7 @@
 defmodule Voxr.Chat do
   import Ecto.Query
   alias Voxr.Repo
-  alias Voxr.Chat.{Channel, Message, MessageAttachment, ChannelRead, ChannelMember, CustomEmoji}
+  alias Voxr.Chat.{Channel, Message, MessageAttachment, MessageReaction, ChannelRead, ChannelMember, CustomEmoji}
 
   def list_channels do
     Channel
@@ -31,7 +31,7 @@ defmodule Voxr.Chat do
       |> where(channel_id: ^channel_id)
       |> order_by(desc: :id)
       |> limit(^(limit + 1))
-      |> preload([:user, :attachments])
+      |> preload([:user, :attachments, :reactions])
 
     query = if before_id, do: where(query, [m], m.id < ^before_id), else: query
 
@@ -63,7 +63,7 @@ defmodule Voxr.Chat do
             Repo.insert_all(MessageAttachment, rows)
           end
 
-          message = Repo.preload(message, [:user, :attachments])
+          message = Repo.preload(message, [:user, :attachments, :reactions])
           Phoenix.PubSub.broadcast(Voxr.PubSub, "room:#{message.channel_id}", {:new_message, message})
           broadcast_unread_updates(message)
           {:ok, message}
@@ -196,6 +196,32 @@ defmodule Voxr.Chat do
     |> where([c], c.type == "dm")
     |> limit(1)
     |> Repo.one()
+  end
+
+  # Reactions
+
+  def toggle_reaction(user_id, message_id, emoji) do
+    case Repo.get_by(MessageReaction, user_id: user_id, message_id: message_id, emoji: emoji) do
+      nil ->
+        %MessageReaction{}
+        |> MessageReaction.changeset(%{user_id: user_id, message_id: message_id, emoji: emoji})
+        |> Repo.insert!()
+
+      existing ->
+        Repo.delete!(existing)
+    end
+
+    reactions_for_message(message_id)
+  end
+
+  def reactions_for_message(message_id) do
+    MessageReaction
+    |> where(message_id: ^message_id)
+    |> Repo.all()
+    |> Enum.group_by(& &1.emoji)
+    |> Enum.map(fn {emoji, rs} ->
+      %{emoji: emoji, count: length(rs), user_ids: Enum.map(rs, & &1.user_id)}
+    end)
   end
 
   # Custom emojis

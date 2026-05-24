@@ -8,9 +8,10 @@ import MessageInput from './MessageInput';
 
 interface Props {
   username: string;
+  userId: number;
 }
 
-export default function MessageArea({ username }: Props) {
+export default function MessageArea({ username, userId }: Props) {
   const messages = useSelector(chatStore, (s) => s.messages);
   const unreadStartIndex = useSelector(chatStore, (s) => s.unreadStartIndex);
   const typingUsers = useSelector(chatStore, (s) => s.typingUsers);
@@ -60,6 +61,7 @@ export default function MessageArea({ username }: Props) {
         dividerRef={dividerRef}
         scrollContainerRef={scrollContainerRef}
         currentUsername={username}
+        currentUserId={userId}
         serverUrl={serverUrl}
         hasMore={hasMore}
         loadingMore={loadingMore}

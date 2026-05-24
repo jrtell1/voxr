@@ -18,12 +18,19 @@ export interface Attachment {
   content_type: string;
 }
 
+export interface Reaction {
+  emoji: string;
+  count: number;
+  user_ids: number[];
+}
+
 export interface Message {
   id: number;
   content: string;
   inserted_at: string;
   user: ChatUser;
   attachments: Attachment[];
+  reactions: Reaction[];
 }
 
 export interface VoiceParticipant {
@@ -54,6 +61,7 @@ export interface Session {
   userChannel: PhxChannel;
   serverUrl: string;
   serverName: string;
+  userId: number;
   username: string;
   displayName: string | null;
   channels: Channel[];

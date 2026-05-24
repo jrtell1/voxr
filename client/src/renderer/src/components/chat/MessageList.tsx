@@ -1,14 +1,19 @@
-import React, { useEffect, useRef, useMemo, type RefObject } from 'react';
+import React, { useEffect, useRef, useMemo, useState, type RefObject } from 'react';
 import { useSelector } from '@tanstack/react-store';
 import type { Message, ChatUser, CustomEmoji } from '../../types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Spinner } from '@/components/ui/spinner';
 import UserPopover from './UserPopover';
 import { customEmojiStore } from '@/stores/customEmojiStore';
+import { sendReaction } from '@/lib/chatActions';
+import { searchEmoji } from '@/lib/emoji';
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 
@@ -19,6 +24,7 @@ interface Props {
   dividerRef: RefObject<HTMLDivElement | null>;
   scrollContainerRef: RefObject<HTMLDivElement | null>;
   currentUsername: string;
+  currentUserId: number;
   serverUrl: string;
   hasMore: boolean;
   loadingMore: boolean;
@@ -34,6 +40,7 @@ export default function MessageList({
   dividerRef,
   scrollContainerRef,
   currentUsername,
+  currentUserId,
   serverUrl,
   hasMore,
   loadingMore,
@@ -103,7 +110,7 @@ export default function MessageList({
                       </UserPopover>
                     )
                   }
-                  <div>
+                  <div className="min-w-0 flex-1">
                     {!isGrouped && (
                       <div className="flex items-baseline gap-2 mb-0.5">
                         <UserPopover user={msg.user} isSelf={isSelf} onPoke={onPoke} onOpenDm={onOpenDm}>
@@ -132,10 +139,37 @@ export default function MessageList({
                         })}
                       </div>
                     )}
+                    {msg.reactions?.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1.5" style={{ userSelect: 'none' }}>
+                        {msg.reactions.map((r) => {
+                          const isOwn = r.user_ids.includes(currentUserId);
+                          return (
+                            <button
+                              key={r.emoji}
+                              onClick={() => sendReaction(msg.id, r.emoji)}
+                              className={`flex items-center gap-1 text-xs px-1 py-0.5 rounded-md border transition-colors cursor-pointer ${
+                                isOwn
+                                  ? 'bg-primary/20 border-primary/40 hover:bg-primary/30'
+                                  : 'bg-muted/40 border-border hover:bg-muted'
+                              }`}
+                            >
+                              {renderReactionEmoji(r.emoji, customEmojiMap)}
+                              <span>{r.count}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
               </ContextMenuTrigger>
               <ContextMenuContent>
+                <ContextMenuSub>
+                  <ContextMenuSubTrigger>React</ContextMenuSubTrigger>
+                  <ContextMenuSubContent className="p-0 overflow-hidden">
+                    <EmojiReactionPicker onSelect={(emoji) => sendReaction(msg.id, emoji)} />
+                  </ContextMenuSubContent>
+                </ContextMenuSub>
                 {msg.content && (
                   <ContextMenuItem onClick={() => copyText(msg.content)}>
                     Copy text
@@ -154,6 +188,57 @@ export default function MessageList({
       <div ref={messagesEndRef} />
     </div>
   );
+}
+
+const POPULAR_EMOJIS = ['👍', '👎', '❤️', '😂', '😮', '😢', '😡', '🎉', '👏', '🔥', '✅', '👀', '🙏', '💯', '🤔', '😊'];
+
+function EmojiReactionPicker({ onSelect }: { onSelect: (emoji: string) => void }) {
+  const [query, setQuery] = useState('');
+  const customEmojis = useSelector(customEmojiStore, (s) => s.emojis);
+
+  const items = useMemo(() => {
+    const q = query.trim();
+    if (!q) return POPULAR_EMOJIS.map((native) => ({ kind: 'standard' as const, shortcode: '', native }));
+    return searchEmoji(q, customEmojis, 24);
+  }, [query, customEmojis]);
+
+  return (
+    <div className="p-2 w-60" onKeyDown={(e) => e.stopPropagation()}>
+      <input
+        className="w-full text-xs border rounded px-2 py-1 mb-2 bg-background outline-none focus:ring-1 focus:ring-ring"
+        placeholder="Search emoji..."
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        autoFocus
+      />
+      <div className="grid grid-cols-8 gap-0.5">
+        {items.map((e, i) => (
+          <button
+            key={i}
+            className="text-xl w-7 h-7 flex items-center justify-center rounded hover:bg-muted cursor-pointer"
+            onClick={() => onSelect(e.kind === 'standard' ? e.native : `:${e.shortcode}:`)}
+          >
+            {e.kind === 'standard'
+              ? e.native
+              : <img src={(e as { url: string }).url} className="w-5 h-5 object-contain" alt={e.shortcode} />
+            }
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function renderReactionEmoji(emoji: string, emojiMap: Map<string, CustomEmoji>): React.ReactNode {
+  if (emoji.startsWith(':') && emoji.endsWith(':')) {
+    const shortcode = emoji.slice(1, -1);
+    const custom = emojiMap.get(shortcode);
+    if (custom) {
+      return <img src={custom.url} className="w-4 h-4 object-contain inline" alt={emoji} />;
+    }
+    return emoji;
+  }
+  return emoji;
 }
 
 function copyText(text: string) {

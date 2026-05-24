@@ -1,5 +1,5 @@
 import type { Socket, Channel as PhxChannel } from 'phoenix';
-import type { Attachment, Channel, DmChannel, ChatUser, Message } from '../types';
+import type { Attachment, Channel, DmChannel, ChatUser, Message, Reaction } from '../types';
 import { chatStore } from '@/stores/chatStore';
 import { serverStore } from '@/stores/serverStore';
 import { saveLastChannel } from './storage';
@@ -48,6 +48,13 @@ function doJoin(topic: string, onJoinOk: (data: Record<string, unknown>) => void
     serverStore.setState((prev) => ({ ...prev, unread: { ...prev.unread, [channel_id]: count } }));
   });
 
+  phxChannel.on('reaction_updated', ({ message_id, reactions }: { message_id: number; reactions: Reaction[] }) => {
+    chatStore.setState((prev) => ({
+      ...prev,
+      messages: prev.messages.map((m) => m.id === message_id ? { ...m, reactions } : m),
+    }));
+  });
+
   phxChannel.on('typing', ({ user_id, name }: { user_id: number; name: string }) => {
     const existing = _typingTimeouts.get(user_id);
     if (existing) clearTimeout(existing);
@@ -80,6 +87,7 @@ function switchPhxChannel(topic: string, onJoinOk: (data: Record<string, unknown
     _channelRef = null;
     old.off('new_message');
     old.off('unread_updated');
+    old.off('reaction_updated');
     old.off('typing');
     _typingTimeouts.forEach(clearTimeout);
     _typingTimeouts.clear();
@@ -228,6 +236,10 @@ export async function sendMessage(content: string, files: File[] = []) {
   _channelRef?.push('send_message', payload);
 }
 
+export function sendReaction(messageId: number, emoji: string) {
+  _channelRef?.push('react', { message_id: messageId, emoji });
+}
+
 export function sendTyping() {
   _channelRef?.push('typing', {});
 }
@@ -240,6 +252,7 @@ export function cleanupChat() {
   if (_channelRef) {
     _channelRef.off('new_message');
     _channelRef.off('unread_updated');
+    _channelRef.off('reaction_updated');
     _channelRef.off('typing');
     _channelRef.leave();
     _channelRef = null;

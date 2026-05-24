@@ -8,6 +8,7 @@ defmodule Voxr.Chat.Message do
     belongs_to :user, Voxr.Accounts.User
     belongs_to :channel, Voxr.Chat.Channel
     has_many :attachments, Voxr.Chat.MessageAttachment
+    has_many :reactions, Voxr.Chat.MessageReaction
 
     timestamps(type: :utc_datetime, updated_at: false)
   end
