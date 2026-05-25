@@ -5,6 +5,7 @@ defmodule Voxr.Chat.Channel do
   schema "channels" do
     field :name, :string
     field :type, :string, default: "text"
+    field :is_archived, :boolean, default: false
 
     has_many :messages, Voxr.Chat.Message
     has_many :channel_members, Voxr.Chat.ChannelMember

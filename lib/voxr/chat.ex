@@ -5,14 +5,14 @@ defmodule Voxr.Chat do
 
   def list_channels do
     Channel
-    |> where(type: "text")
+    |> where(type: "text", is_archived: false)
     |> order_by(:name)
     |> Repo.all()
   end
 
   def list_voice_channels do
     Channel
-    |> where(type: "voice")
+    |> where(type: "voice", is_archived: false)
     |> order_by(:name)
     |> Repo.all()
   end
@@ -23,6 +23,16 @@ defmodule Voxr.Chat do
     %Channel{}
     |> Channel.changeset(attrs)
     |> Repo.insert()
+  end
+
+  def archive_channel(channel_id) do
+    case Repo.get(Channel, channel_id) do
+      nil -> {:error, :not_found}
+      channel ->
+        channel
+        |> Ecto.Changeset.change(is_archived: true)
+        |> Repo.update()
+    end
   end
 
   def list_messages(channel_id, limit \\ 50, before_id \\ nil) do

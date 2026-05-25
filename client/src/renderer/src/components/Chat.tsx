@@ -20,22 +20,23 @@ interface Props {
 }
 
 export default function Chat({ session, onDisconnect }: Props) {
-  const { socket, userChannel, serverUrl, serverName, username, channels: allChannels, initialUnread } = session;
-  const textChannels = allChannels.filter((c) => c.type === 'text');
-  const voiceChannels = allChannels.filter((c) => c.type === 'voice');
+  const { socket, userChannel, serverUrl, serverName, username, channels: initialChannels, initialUnread } = session;
 
   const activeView = useSelector(chatStore, (s) => s.activeView);
   const pokeFrom = useSelector(serverStore, (s) => s.pokeFrom);
 
   useEffect(() => {
-    const serverChannel = initServer(socket, userChannel, initialUnread, session.dmChannels, session.displayName);
+    const serverChannel = initServer(
+      socket, userChannel, initialUnread, session.dmChannels,
+      session.displayName, initialChannels, session.isAdmin,
+    );
     initChat(socket, userChannel, serverUrl, session.token);
     initVoice(serverChannel);
     initCustomEmojis(serverUrl, session.token);
 
     const lastChannelId = getLastChannel(serverUrl);
     if (lastChannelId) {
-      const channel = textChannels.find((c) => c.id === lastChannelId);
+      const channel = initialChannels.find((c) => c.id === lastChannelId && c.type === 'text');
       if (channel) joinChannel(channel);
     }
 
@@ -69,8 +70,6 @@ export default function Chat({ session, onDisconnect }: Props) {
       <ChatSidebar
         serverName={serverName}
         username={username}
-        textChannels={textChannels}
-        voiceChannels={voiceChannels}
         onDisconnect={handleDisconnect}
       />
 

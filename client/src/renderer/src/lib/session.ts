@@ -65,8 +65,8 @@ function connectSocket(
     const userChannel = socket.channel('user:me');
     userChannel
       .join()
-      .receive('ok', ({ user_id, unread_counts, display_name, dm_channels }: { user_id: number; unread_counts: Record<number, number>; display_name: string | null; dm_channels: DmChannel[] }) => {
-        resolve({ socket, userChannel, serverUrl, serverName, userId: user_id, username, displayName: display_name, channels, initialUnread: unread_counts, dmChannels: dm_channels ?? [], token });
+      .receive('ok', ({ user_id, is_admin, unread_counts, display_name, dm_channels }: { user_id: number; is_admin: boolean; unread_counts: Record<number, number>; display_name: string | null; dm_channels: DmChannel[] }) => {
+        resolve({ socket, userChannel, serverUrl, serverName, userId: user_id, isAdmin: is_admin ?? false, username, displayName: display_name, channels, initialUnread: unread_counts, dmChannels: dm_channels ?? [], token });
       })
       .receive('error', () => {
         socket.disconnect();

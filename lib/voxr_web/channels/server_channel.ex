@@ -72,6 +72,43 @@ defmodule VoxrWeb.ServerChannel do
   end
 
   @impl true
+  def handle_in("create_channel", %{"name" => name, "type" => type}, socket) do
+    user = socket.assigns.current_user
+
+    if user.is_admin do
+      case Voxr.Chat.create_channel(%{name: name, type: type}) do
+        {:ok, channel} ->
+          broadcast!(socket, "channel_created", %{id: channel.id, name: channel.name, type: channel.type})
+          {:reply, :ok, socket}
+
+        {:error, changeset} ->
+          msg = changeset.errors |> Enum.map(fn {f, {m, _}} -> "#{f} #{m}" end) |> Enum.join(", ")
+          {:reply, {:error, %{reason: msg}}, socket}
+      end
+    else
+      {:reply, {:error, %{reason: "unauthorized"}}, socket}
+    end
+  end
+
+  @impl true
+  def handle_in("delete_channel", %{"channel_id" => channel_id}, socket) do
+    user = socket.assigns.current_user
+
+    if user.is_admin do
+      case Voxr.Chat.archive_channel(channel_id) do
+        {:ok, _} ->
+          broadcast!(socket, "channel_deleted", %{channel_id: channel_id})
+          {:reply, :ok, socket}
+
+        {:error, :not_found} ->
+          {:reply, {:error, %{reason: "not found"}}, socket}
+      end
+    else
+      {:reply, {:error, %{reason: "unauthorized"}}, socket}
+    end
+  end
+
+  @impl true
   def handle_out("presence_diff", payload, socket) do
     push(socket, "presence_diff", payload)
     {:noreply, socket}

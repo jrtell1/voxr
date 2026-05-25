@@ -1,5 +1,5 @@
 import { Store } from '@tanstack/store';
-import type { DmChannel } from '@/types';
+import type { Channel, DmChannel } from '@/types';
 
 interface PresenceMeta {
   username: string;
@@ -15,6 +15,8 @@ interface ServerState {
   presences: ServerPresences;
   unread: Record<number, number>;
   dmChannels: DmChannel[];
+  channels: Channel[];
+  isAdmin: boolean;
   pokeFrom: string | null;
   displayName: string | null;
 }
@@ -23,6 +25,8 @@ export const serverStore = new Store<ServerState>({
   presences: {},
   unread: {},
   dmChannels: [],
+  channels: [],
+  isAdmin: false,
   pokeFrom: null,
   displayName: null,
 });

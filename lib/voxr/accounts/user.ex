@@ -5,6 +5,7 @@ defmodule Voxr.Accounts.User do
   schema "users" do
     field :username, :string
     field :display_name, :string
+    field :is_admin, :boolean, default: false
     field :password_hash, :string
     field :password, :string, virtual: true
 

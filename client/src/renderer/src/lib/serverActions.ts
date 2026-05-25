@@ -1,6 +1,6 @@
 import { Presence } from 'phoenix';
 import type { Channel as PhxChannel, Socket } from 'phoenix';
-import type { ChatUser, DmChannel } from '@/types';
+import type { Channel, ChatUser, DmChannel } from '@/types';
 import { serverStore } from '@/stores/serverStore';
 import { getShakeEnabled, getSoundEnabled } from './storage';
 
@@ -14,6 +14,8 @@ export function initServer(
   initialUnread: Record<number, number>,
   initialDmChannels: DmChannel[],
   initialDisplayName: string | null,
+  initialChannels: Channel[],
+  isAdmin: boolean,
 ): PhxChannel {
   _userChannel = userChannel;
 
@@ -21,6 +23,8 @@ export function initServer(
     presences: {},
     unread: initialUnread,
     dmChannels: initialDmChannels,
+    channels: initialChannels,
+    isAdmin,
     pokeFrom: null,
     displayName: initialDisplayName,
   }));
@@ -62,7 +66,39 @@ export function initServer(
     serverStore.setState((prev) => ({ ...prev, presences: { ...Presence.syncDiff(prev.presences, diff) } }));
   });
 
+  serverChannel.on('channel_created', (channel: Channel) => {
+    serverStore.setState((prev) => ({
+      ...prev,
+      channels: [...prev.channels, channel].sort((a, b) => a.name.localeCompare(b.name)),
+    }));
+  });
+
+  serverChannel.on('channel_deleted', ({ channel_id }: { channel_id: number }) => {
+    serverStore.setState((prev) => ({
+      ...prev,
+      channels: prev.channels.filter((c) => c.id !== channel_id),
+    }));
+  });
+
   return serverChannel;
+}
+
+export function createChannel(name: string, type: 'text' | 'voice'): Promise<void> {
+  return new Promise((resolve, reject) => {
+    _serverChannel
+      ?.push('create_channel', { name, type })
+      .receive('ok', () => resolve())
+      .receive('error', ({ reason }: { reason: string }) => reject(new Error(reason)));
+  });
+}
+
+export function deleteChannel(channelId: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    _serverChannel
+      ?.push('delete_channel', { channel_id: channelId })
+      .receive('ok', () => resolve())
+      .receive('error', ({ reason }: { reason: string }) => reject(new Error(reason)));
+  });
 }
 
 export function updateDisplayName(name: string): Promise<void> {

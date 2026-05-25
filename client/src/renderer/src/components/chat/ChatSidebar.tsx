@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, FormEvent, ChangeEvent } from 'react';
 import { useSelector } from '@tanstack/react-store';
-import type { Channel, VoiceParticipant } from '@/types';
+import type { VoiceParticipant } from '@/types';
 import {
   Sidebar,
   SidebarContent,
@@ -25,10 +25,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { LogOutIcon, SettingsIcon, Volume2Icon, TrashIcon, PlusIcon } from 'lucide-react';
+import { LogOutIcon, SettingsIcon, Volume2Icon, TrashIcon, PlusIcon, ServerIcon, ChevronUpIcon } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
 import { getShakeEnabled, setShakeEnabled, getSoundEnabled, setSoundEnabled } from '@/lib/storage';
 import VoiceControls from './VoiceControls';
+import ServerAdminModal from './ServerAdminModal';
 import { chatStore } from '@/stores/chatStore';
 import { serverStore } from '@/stores/serverStore';
 import { voiceStore } from '@/stores/voiceStore';
@@ -41,19 +49,22 @@ import { customEmojiStore } from '@/stores/customEmojiStore';
 interface Props {
   serverName: string;
   username: string;
-  textChannels: Channel[];
-  voiceChannels: Channel[];
   onDisconnect: () => void;
 }
 
-export default function ChatSidebar({ serverName, username, textChannels, voiceChannels, onDisconnect }: Props) {
+export default function ChatSidebar({ serverName, username, onDisconnect }: Props) {
   const displayName = useSelector(serverStore, (s) => s.displayName);
   const dmChannels = useSelector(serverStore, (s) => s.dmChannels);
   const unread = useSelector(serverStore, (s) => s.unread);
   const presences = useSelector(serverStore, (s) => s.presences);
+  const channels = useSelector(serverStore, (s) => s.channels);
+  const isAdmin = useSelector(serverStore, (s) => s.isAdmin);
   const activeView = useSelector(chatStore, (s) => s.activeView);
   const voiceState = useSelector(voiceStore, (s) => s.voiceState);
   const speakingUserIds = useSelector(voiceStore, (s) => s.speakingUserIds);
+
+  const textChannels = useMemo(() => channels.filter((c) => c.type === 'text'), [channels]);
+  const voiceChannels = useMemo(() => channels.filter((c) => c.type === 'voice'), [channels]);
 
   const voicePresence = useMemo(() => {
     const result: Record<number, VoiceParticipant[]> = {};
@@ -82,6 +93,8 @@ export default function ChatSidebar({ serverName, username, textChannels, voiceC
   const [emojiUploading, setEmojiUploading] = useState(false);
   const [emojiError, setEmojiError] = useState<string | null>(null);
   const emojiFileRef = useRef<HTMLInputElement>(null);
+
+  const [adminOpen, setAdminOpen] = useState(false);
 
   function openSettings() {
     setNewName(displayName ?? username);
@@ -161,46 +174,44 @@ export default function ChatSidebar({ serverName, username, textChannels, voiceC
             </SidebarGroupContent>
           </SidebarGroup>
 
-          {voiceChannels.length > 0 && (
-            <SidebarGroup>
-              <SidebarGroupLabel>Voice Channels</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {voiceChannels.map((ch) => {
-                    const participants = voicePresence[ch.id] ?? [];
-                    return (
-                      <SidebarMenuItem key={ch.id}>
-                        <SidebarMenuButton onClick={() => joinVoiceChannel(ch)}>
-                          <Volume2Icon className="size-3.5 text-muted-foreground shrink-0" />
-                          <span>{ch.name}</span>
-                          {participants.length > 0 && (
-                            <span className="ml-auto text-xs text-muted-foreground tabular-nums">{participants.length}</span>
-                          )}
-                        </SidebarMenuButton>
+          <SidebarGroup>
+            <SidebarGroupLabel>Voice Channels</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {voiceChannels.map((ch) => {
+                  const participants = voicePresence[ch.id] ?? [];
+                  return (
+                    <SidebarMenuItem key={ch.id}>
+                      <SidebarMenuButton onClick={() => joinVoiceChannel(ch)}>
+                        <Volume2Icon className="size-3.5 text-muted-foreground shrink-0" />
+                        <span>{ch.name}</span>
                         {participants.length > 0 && (
-                          <div className="pb-1 pl-9 pr-2 space-y-0.5">
-                            {participants.map((p) => {
-                              const speaking = speakingUserIds.has(p.userId);
-                              return (
-                                <div key={p.userId} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                  <span className={`size-1.5 rounded-full shrink-0 transition-colors ${
-                                    speaking ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground/40'
-                                  }`} />
-                                  <span className={`truncate transition-colors ${speaking ? 'text-foreground font-medium' : ''}`}>
-                                    {p.displayName ?? p.username}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                          </div>
+                          <span className="ml-auto text-xs text-muted-foreground tabular-nums">{participants.length}</span>
                         )}
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          )}
+                      </SidebarMenuButton>
+                      {participants.length > 0 && (
+                        <div className="pb-1 pl-9 pr-2 space-y-0.5">
+                          {participants.map((p) => {
+                            const speaking = speakingUserIds.has(p.userId);
+                            return (
+                              <div key={p.userId} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                <span className={`size-1.5 rounded-full shrink-0 transition-colors ${
+                                  speaking ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground/40'
+                                }`} />
+                                <span className={`truncate transition-colors ${speaking ? 'text-foreground font-medium' : ''}`}>
+                                  {p.displayName ?? p.username}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
 
           {dmChannels.length > 0 && (
             <SidebarGroup>
@@ -234,20 +245,39 @@ export default function ChatSidebar({ serverName, username, textChannels, voiceC
         <VoiceControls />
 
         <SidebarFooter className="border-t">
-          <div className="flex items-center gap-2 px-2 py-1">
-            <Avatar size="default">
-              <AvatarFallback>{visibleName[0].toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col flex-1 min-w-0">
-              <span className="text-sm font-medium truncate">{visibleName}</span>
-              {displayName && displayName !== username && (
-                <span className="text-xs text-muted-foreground truncate">@{username}</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-2 px-2 py-1 w-full rounded-md hover:bg-muted transition-colors text-left">
+                <Avatar size="default">
+                  <AvatarFallback>{visibleName[0].toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col flex-1 min-w-0">
+                  <span className="text-sm font-medium truncate">{visibleName}</span>
+                  {displayName && displayName !== username && (
+                    <span className="text-xs text-muted-foreground truncate">@{username}</span>
+                  )}
+                </div>
+                <ChevronUpIcon className="size-3.5 text-muted-foreground shrink-0" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="start" className="w-56">
+              <DropdownMenuItem onClick={openSettings}>
+                <SettingsIcon className="size-3.5" />
+                Settings
+              </DropdownMenuItem>
+              {isAdmin && (
+                <DropdownMenuItem onClick={() => setAdminOpen(true)}>
+                  <ServerIcon className="size-3.5" />
+                  Server Administration
+                </DropdownMenuItem>
               )}
-            </div>
-            <Button variant="ghost" size="icon-lg" onClick={openSettings}>
-              <SettingsIcon className="size-3.5" />
-            </Button>
-          </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem variant="destructive" onClick={onDisconnect}>
+                <LogOutIcon className="size-3.5" />
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </SidebarFooter>
       </Sidebar>
 
@@ -272,7 +302,6 @@ export default function ChatSidebar({ serverName, username, textChannels, voiceC
                 <p className="text-xs text-muted-foreground">This is how you appear in chat. Defaults to your username.</p>
               </div>
             </section>
-
 
             <section className="flex flex-col gap-3">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Notifications</h3>
@@ -356,11 +385,7 @@ export default function ChatSidebar({ serverName, username, textChannels, voiceC
 
             {error && <p className="text-sm text-destructive">{error}</p>}
 
-            <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-between">
-              <Button type="button" variant="destructive" onClick={onDisconnect}>
-                <LogOutIcon className="size-3.5" />
-                Logout
-              </Button>
+            <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-end">
               <div className="flex gap-2">
                 <Button type="button" variant="outline" onClick={() => setSettingsOpen(false)}>
                   Cancel
@@ -373,6 +398,8 @@ export default function ChatSidebar({ serverName, username, textChannels, voiceC
           </form>
         </DialogContent>
       </Dialog>
+
+      <ServerAdminModal open={adminOpen} onOpenChange={setAdminOpen} />
     </>
   );
 }

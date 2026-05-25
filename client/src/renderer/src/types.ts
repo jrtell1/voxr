@@ -63,6 +63,7 @@ export interface Session {
   serverName: string;
   userId: number;
   username: string;
+  isAdmin: boolean;
   displayName: string | null;
   channels: Channel[];
   initialUnread: Record<number, number>;
