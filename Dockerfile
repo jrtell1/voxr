@@ -54,6 +54,7 @@ RUN chown nobody /app
 ENV MIX_ENV="prod"
 
 COPY --from=builder --chown=nobody:root /app/_build/${MIX_ENV}/rel/voxr ./
+RUN chmod +x /app/bin/*
 
 USER nobody
 
