@@ -24,6 +24,19 @@ services:
       LIVEKIT_KEYS: "${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}"
     restart: unless-stopped
 
+  migrate:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    command: ["/app/bin/voxr", "eval", "Voxr.Release.migrate()"]
+    environment:
+      DATABASE_URL: "ecto://voxr:${POSTGRES_PASSWORD}@postgres/voxr_prod"
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
   backend:
     build:
       context: ..
@@ -41,6 +54,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       livekit:
         condition: service_started
     restart: unless-stopped
