@@ -32,6 +32,9 @@ services:
     environment:
       DATABASE_URL: "ecto://voxr:${POSTGRES_PASSWORD}@postgres/voxr_prod"
       SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+      LIVEKIT_URL: ${LIVEKIT_URL:-ws://livekit:7880}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
     depends_on:
       postgres:
         condition: service_healthy
