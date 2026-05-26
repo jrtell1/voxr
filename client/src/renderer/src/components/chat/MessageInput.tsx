@@ -159,6 +159,7 @@ export default function MessageInput({ label, onSubmit, onTyping }: Props) {
         setFiles([]);
       } finally {
         setUploading(false);
+        requestAnimationFrame(() => textareaRef.current?.focus());
       }
     }
   }
