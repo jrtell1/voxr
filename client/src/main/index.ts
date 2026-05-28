@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, IpcMainEvent, Notification, session } from 'electron';
+import { app, BrowserWindow, ipcMain, IpcMainEvent, Notification, session, shell } from 'electron';
 import { join } from 'path';
 
 function createWindow() {
@@ -64,6 +64,8 @@ ipcMain.on('window:shake', (e) => {
     win.setPosition(origX + dx, origY + dy);
   }, 50);
 });
+
+ipcMain.on('shell:openExternal', (_, url: string) => shell.openExternal(url));
 
 ipcMain.on('notification:show', (_, { title, body }: { title: string; body: string }) => {
   new Notification({ title, body }).show();

@@ -7,4 +7,5 @@ contextBridge.exposeInMainWorld('electron', {
   close: () => ipcRenderer.send('window:close'),
   shake: () => ipcRenderer.send('window:shake'),
   notify: (title: string, body: string) => ipcRenderer.send('notification:show', { title, body }),
+  openExternal: (url: string) => ipcRenderer.send('shell:openExternal', url),
 });

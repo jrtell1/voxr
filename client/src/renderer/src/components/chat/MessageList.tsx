@@ -144,6 +144,17 @@ export default function MessageList({
                         </p>
                       )
                     )}
+                    {msg.id !== editingMessageId && msg.content && extractYouTubeIds(msg.content).map((id) => (
+                      <div key={id} className="mt-2 rounded-lg overflow-hidden border max-w-sm">
+                        <iframe
+                          src={`https://www.youtube.com/embed/${id}`}
+                          title="YouTube video"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          className="w-full aspect-video"
+                        />
+                      </div>
+                    ))}
                     {msg.attachments?.length > 0 && (
                       <div className="flex flex-wrap gap-2 mt-1">
                         {msg.attachments.map((a, i) => {
@@ -329,7 +340,8 @@ function copyText(text: string) {
 
 function renderContent(text: string, emojiMap: Map<string, CustomEmoji>): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
-  const regex = /:([a-z0-9_]+):/g;
+  // URLs first (they may contain colons), then custom emoji shortcodes
+  const regex = /(https?:\/\/[^\s<>"']+[^\s<>"'.,;:!?)\]}'"])|:([a-z0-9_]+):/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
   let key = 0;
@@ -338,20 +350,36 @@ function renderContent(text: string, emojiMap: Map<string, CustomEmoji>): React.
     if (match.index > lastIndex) {
       parts.push(text.slice(lastIndex, match.index));
     }
-    const emoji = emojiMap.get(match[1]);
-    if (emoji) {
+
+    if (match[1]) {
+      const url = match[1];
       parts.push(
-        <img
+        <a
           key={key++}
-          src={emoji.url}
-          alt={`:${emoji.shortcode}:`}
-          title={`:${emoji.shortcode}:`}
-          className="inline-block h-5 w-auto align-middle mx-0.5"
-        />
+          href={url}
+          className="text-primary underline hover:no-underline break-all"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.electron.openExternal(url); }}
+        >
+          {url}
+        </a>
       );
-    } else {
-      parts.push(match[0]);
+    } else if (match[2]) {
+      const emoji = emojiMap.get(match[2]);
+      if (emoji) {
+        parts.push(
+          <img
+            key={key++}
+            src={emoji.url}
+            alt={`:${emoji.shortcode}:`}
+            title={`:${emoji.shortcode}:`}
+            className="inline-block h-5 w-auto align-middle mx-0.5"
+          />
+        );
+      } else {
+        parts.push(match[0]);
+      }
     }
+
     lastIndex = regex.lastIndex;
   }
 
@@ -360,6 +388,23 @@ function renderContent(text: string, emojiMap: Map<string, CustomEmoji>): React.
   }
 
   return parts;
+}
+
+function extractYouTubeId(url: string): string | null {
+  const match = url.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  return match ? match[1] : null;
+}
+
+function extractYouTubeIds(text: string): string[] {
+  const urlRegex = /https?:\/\/[^\s<>"']+/g;
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  let match: RegExpExecArray | null;
+  while ((match = urlRegex.exec(text)) !== null) {
+    const id = extractYouTubeId(match[0]);
+    if (id && !seen.has(id)) { ids.push(id); seen.add(id); }
+  }
+  return ids;
 }
 
 function formatTimeShort(iso: string): string {
