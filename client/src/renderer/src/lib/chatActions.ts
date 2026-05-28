@@ -55,6 +55,13 @@ function doJoin(topic: string, onJoinOk: (data: Record<string, unknown>) => void
     }));
   });
 
+  phxChannel.on('message_edited', (msg: Message) => {
+    chatStore.setState((prev) => ({
+      ...prev,
+      messages: prev.messages.map((m) => m.id === msg.id ? msg : m),
+    }));
+  });
+
   phxChannel.on('typing', ({ user_id, name }: { user_id: number; name: string }) => {
     const existing = _typingTimeouts.get(user_id);
     if (existing) clearTimeout(existing);
@@ -88,6 +95,7 @@ function switchPhxChannel(topic: string, onJoinOk: (data: Record<string, unknown
     old.off('new_message');
     old.off('unread_updated');
     old.off('reaction_updated');
+    old.off('message_edited');
     old.off('typing');
     _typingTimeouts.forEach(clearTimeout);
     _typingTimeouts.clear();
@@ -236,6 +244,15 @@ export async function sendMessage(content: string, files: File[] = []) {
   _channelRef?.push('send_message', payload);
 }
 
+export function editMessage(messageId: number, content: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    _channelRef
+      ?.push('edit_message', { message_id: messageId, content })
+      .receive('ok', () => resolve())
+      .receive('error', ({ reason }: { reason: string }) => reject(new Error(reason)));
+  });
+}
+
 export function sendReaction(messageId: number, emoji: string) {
   _channelRef?.push('react', { message_id: messageId, emoji });
 }
@@ -253,6 +270,7 @@ export function cleanupChat() {
     _channelRef.off('new_message');
     _channelRef.off('unread_updated');
     _channelRef.off('reaction_updated');
+    _channelRef.off('message_edited');
     _channelRef.off('typing');
     _channelRef.leave();
     _channelRef = null;

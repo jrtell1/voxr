@@ -10,11 +10,12 @@ interface Props {
   label: string;
   onSubmit: (content: string, files: File[]) => void;
   onTyping?: () => void;
+  onUpArrow?: () => void;
 }
 
 const ACCEPTED = 'image/jpeg,image/png,image/gif,image/webp';
 
-export default function MessageInput({ label, onSubmit, onTyping }: Props) {
+export default function MessageInput({ label, onSubmit, onTyping, onUpArrow }: Props) {
   const [value, setValue] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
@@ -124,6 +125,12 @@ export default function MessageInput({ label, onSubmit, onTyping }: Props) {
   }
 
   async function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'ArrowUp' && value === '' && emojiResults.length === 0) {
+      e.preventDefault();
+      onUpArrow?.();
+      return;
+    }
+
     if (emojiResults.length > 0) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();

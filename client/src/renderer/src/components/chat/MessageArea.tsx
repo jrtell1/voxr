@@ -1,7 +1,8 @@
-import { useLayoutEffect, useEffect, useRef } from 'react';
+import { useLayoutEffect, useEffect, useRef, useState } from 'react';
 import { useSelector } from '@tanstack/react-store';
+import type { Message } from '@/types';
 import { chatStore } from '@/stores/chatStore';
-import { sendMessage, sendTyping, loadMoreMessages, sendPoke, openDm, scrollFlags } from '@/lib/chatActions';
+import { sendMessage, sendTyping, loadMoreMessages, sendPoke, openDm, editMessage, scrollFlags } from '@/lib/chatActions';
 import MessageList from './MessageList';
 import TypingIndicator from './TypingIndicator';
 import MessageInput from './MessageInput';
@@ -19,6 +20,8 @@ export default function MessageArea({ username, userId }: Props) {
   const loadingMore = useSelector(chatStore, (s) => s.loadingMore);
   const activeView = useSelector(chatStore, (s) => s.activeView);
   const serverUrl = useSelector(chatStore, (s) => s.serverUrl);
+
+  const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const dividerRef = useRef<HTMLDivElement | null>(null);
@@ -61,6 +64,31 @@ export default function MessageArea({ username, userId }: Props) {
     return () => imgs.forEach((img) => img.removeEventListener('load', handleLoad));
   }, [messages]);
 
+  useEffect(() => {
+    setEditingMessageId(null);
+  }, [activeView]);
+
+  function handleStartEdit(msg: Message) {
+    setEditingMessageId(msg.id);
+  }
+
+  function handleCancelEdit() {
+    setEditingMessageId(null);
+  }
+
+  async function handleSubmitEdit(messageId: number, content: string) {
+    await editMessage(messageId, content);
+    setEditingMessageId(null);
+  }
+
+  function handleUpArrow() {
+    const lastOwn = [...messages].reverse().find((m) => m.user.id === userId && m.content.trim() !== '');
+    if (lastOwn) {
+      setEditingMessageId(lastOwn.id);
+      requestAnimationFrame(() => messagesEndRef.current?.scrollIntoView());
+    }
+  }
+
   function handleLoadMore() {
     scrollFlags.prevScrollHeight = scrollContainerRef.current?.scrollHeight ?? null;
     loadMoreMessages();
@@ -90,9 +118,13 @@ export default function MessageArea({ username, userId }: Props) {
         onLoadMore={handleLoadMore}
         onPoke={sendPoke}
         onOpenDm={openDm}
+        editingMessageId={editingMessageId}
+        onStartEdit={handleStartEdit}
+        onCancelEdit={handleCancelEdit}
+        onSubmitEdit={handleSubmitEdit}
       />
       <TypingIndicator names={[...typingUsers.values()]} />
-      <MessageInput label={messageLabel} onSubmit={sendMessage} onTyping={sendTyping} />
+      <MessageInput label={messageLabel} onSubmit={sendMessage} onTyping={sendTyping} onUpArrow={handleUpArrow} />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo, useState, type RefObject } from 'react';
+import React, { useEffect, useRef, useMemo, useState, type KeyboardEvent, type RefObject } from 'react';
 import { useSelector } from '@tanstack/react-store';
 import type { Message, ChatUser, CustomEmoji } from '../../types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -31,6 +31,10 @@ interface Props {
   onLoadMore: () => void;
   onPoke: (userId: number) => void;
   onOpenDm: (user: ChatUser) => void;
+  editingMessageId: number | null;
+  onStartEdit: (msg: Message) => void;
+  onCancelEdit: () => void;
+  onSubmitEdit: (messageId: number, content: string) => Promise<void>;
 }
 
 export default function MessageList({
@@ -47,6 +51,10 @@ export default function MessageList({
   onLoadMore,
   onPoke,
   onOpenDm,
+  editingMessageId,
+  onStartEdit,
+  onCancelEdit,
+  onSubmitEdit,
 }: Props) {
   const sentinelRef = useRef<HTMLDivElement>(null);
   const onLoadMoreRef = useRef(onLoadMore);
@@ -121,10 +129,20 @@ export default function MessageList({
                         <span className="text-xs text-muted-foreground">{formatTime(msg.inserted_at)}</span>
                       </div>
                     )}
-                    {msg.content && (
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                        {renderContent(msg.content, customEmojiMap)}
-                      </p>
+                    {msg.id === editingMessageId ? (
+                      <InlineEditInput
+                        initialContent={msg.content}
+                        messageId={msg.id}
+                        onSubmit={onSubmitEdit}
+                        onCancel={onCancelEdit}
+                      />
+                    ) : (
+                      msg.content && (
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                          {renderContent(msg.content, customEmojiMap)}
+                          {msg.is_edited && <span className="text-xs text-muted-foreground ml-1">(edited)</span>}
+                        </p>
+                      )
                     )}
                     {msg.attachments?.length > 0 && (
                       <div className="flex flex-wrap gap-2 mt-1">
@@ -164,6 +182,11 @@ export default function MessageList({
                 </div>
               </ContextMenuTrigger>
               <ContextMenuContent>
+                {msg.user.id === currentUserId && (
+                  <ContextMenuItem onClick={() => onStartEdit(msg)}>
+                    Edit
+                  </ContextMenuItem>
+                )}
                 <ContextMenuSub>
                   <ContextMenuSubTrigger>React</ContextMenuSubTrigger>
                   <ContextMenuSubContent className="p-0 overflow-hidden">
@@ -186,6 +209,57 @@ export default function MessageList({
         );
       })}
       <div ref={messagesEndRef} />
+    </div>
+  );
+}
+
+function InlineEditInput({ initialContent, messageId, onSubmit, onCancel }: {
+  initialContent: string;
+  messageId: number;
+  onSubmit: (messageId: number, content: string) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [value, setValue] = useState(initialContent);
+  const [saving, setSaving] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.focus();
+    el.setSelectionRange(el.value.length, el.value.length);
+  }, []);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+
+  async function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'Escape') { e.preventDefault(); onCancel(); return; }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      const content = value.trim();
+      if (!content || saving) return;
+      setSaving(true);
+      try { await onSubmit(messageId, content); } finally { setSaving(false); }
+    }
+  }
+
+  return (
+    <div className="mt-0.5">
+      <textarea
+        ref={textareaRef}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={handleKeyDown}
+        disabled={saving}
+        rows={1}
+        className="w-full text-sm leading-relaxed bg-muted/60 border border-border rounded-md px-2 py-1.5 resize-none overflow-hidden outline-none focus:ring-1 focus:ring-ring"
+      />
+      <p className="text-xs text-muted-foreground mt-0.5">escape to cancel · enter to save</p>
     </div>
   );
 }

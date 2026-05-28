@@ -25,6 +25,24 @@ defmodule Voxr.Chat do
     |> Repo.insert()
   end
 
+  def update_message(message_id, user_id, new_content) do
+    with message when not is_nil(message) <- Repo.get(Message, message_id),
+         :ok <- if(message.user_id == user_id, do: :ok, else: {:error, :forbidden}),
+         false <- String.trim(new_content) == "" do
+      case message |> Message.edit_changeset(%{content: new_content}) |> Repo.update() do
+        {:ok, updated} ->
+          updated = Repo.preload(updated, [:user, :attachments, :reactions])
+          Phoenix.PubSub.broadcast(Voxr.PubSub, "room:#{updated.channel_id}", {:message_edited, updated})
+          {:ok, updated}
+        error -> error
+      end
+    else
+      nil -> {:error, :not_found}
+      {:error, reason} -> {:error, reason}
+      true -> {:error, :empty_content}
+    end
+  end
+
   def archive_channel(channel_id) do
     case Repo.get(Channel, channel_id) do
       nil -> {:error, :not_found}

@@ -61,6 +61,18 @@ defmodule VoxrWeb.RoomChannel do
     {:noreply, socket}
   end
 
+  def handle_in("edit_message", %{"message_id" => message_id, "content" => content}, socket) do
+    user = socket.assigns.current_user
+
+    case Chat.update_message(message_id, user.id, content) do
+      {:ok, _} -> {:reply, :ok, socket}
+      {:error, :forbidden} -> {:reply, {:error, %{reason: "forbidden"}}, socket}
+      {:error, :not_found} -> {:reply, {:error, %{reason: "not_found"}}, socket}
+      {:error, :empty_content} -> {:reply, {:error, %{reason: "empty_content"}}, socket}
+      {:error, _} -> {:reply, {:error, %{reason: "invalid"}}, socket}
+    end
+  end
+
   def handle_in("send_message", params, socket) do
     user = socket.assigns.current_user
     channel_id = socket.assigns.channel_id
@@ -89,6 +101,11 @@ defmodule VoxrWeb.RoomChannel do
     {:noreply, socket}
   end
 
+  def handle_info({:message_edited, message}, socket) do
+    push(socket, "message_edited", serialize_message(message))
+    {:noreply, socket}
+  end
+
   def handle_info({:new_message, message}, socket) do
     push(socket, "new_message", serialize_message(message))
     Chat.mark_read(socket.assigns.current_user.id, socket.assigns.channel_id)
@@ -108,6 +125,7 @@ defmodule VoxrWeb.RoomChannel do
     %{
       id: message.id,
       content: message.content,
+      is_edited: message.is_edited,
       inserted_at: DateTime.to_iso8601(message.inserted_at),
       user: %{
         id: message.user.id,

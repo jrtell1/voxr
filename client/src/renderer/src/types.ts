@@ -27,6 +27,7 @@ export interface Reaction {
 export interface Message {
   id: number;
   content: string;
+  is_edited: boolean;
   inserted_at: string;
   user: ChatUser;
   attachments: Attachment[];
