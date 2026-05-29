@@ -93,7 +93,8 @@ export default function MessageList({
         const isSelf = msg.user.username === currentUsername;
         const isGrouped = i > 0
           && messages[i - 1].user.username === msg.user.username
-          && i !== unreadStartIndex;
+          && i !== unreadStartIndex
+          && new Date(msg.inserted_at).getTime() - new Date(messages[i - 1].inserted_at).getTime() < 30 * 60 * 1000;
         return (
           <div key={msg.id ?? i}>
             {i === unreadStartIndex && (
