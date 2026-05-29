@@ -70,7 +70,7 @@ ipcMain.on('window:shake', (e) => {
 ipcMain.on('shell:openExternal', (_, url: string) => shell.openExternal(url));
 
 ipcMain.on('notification:show', (_, { title, body }: { title: string; body: string }) => {
-  new Notification({ title, body }).show();
+  new Notification({ title, body, silent: true }).show();
 });
 
 app.whenReady().then(() => {
