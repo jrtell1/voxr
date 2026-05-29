@@ -140,7 +140,7 @@ export default function MessageList({
                     ) : (
                       msg.content && (
                         <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                          {renderContent(msg.content, customEmojiMap)}
+                          {renderContent(msg.content, customEmojiMap, currentUsername)}
                           {msg.is_edited && <span className="text-xs text-muted-foreground ml-1">(edited)</span>}
                         </p>
                       )
@@ -339,10 +339,10 @@ function copyText(text: string) {
   });
 }
 
-function renderContent(text: string, emojiMap: Map<string, CustomEmoji>): React.ReactNode[] {
+function renderContent(text: string, emojiMap: Map<string, CustomEmoji>, currentUsername: string): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
-  // URLs first (they may contain colons), then custom emoji shortcodes
-  const regex = /(https?:\/\/[^\s<>"']+[^\s<>"'.,;:!?)\]}'"])|:([a-z0-9_]+):/g;
+  // URLs first (they may contain colons), then custom emoji shortcodes, then @mentions
+  const regex = /(https?:\/\/[^\s<>"']+[^\s<>"'.,;:!?)\]}'"])|:([a-z0-9_]+):|@([a-zA-Z0-9_]+)/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
   let key = 0;
@@ -379,6 +379,16 @@ function renderContent(text: string, emojiMap: Map<string, CustomEmoji>): React.
       } else {
         parts.push(match[0]);
       }
+    } else if (match[3]) {
+      const isSelf = match[3].toLowerCase() === currentUsername.toLowerCase();
+      parts.push(
+        <span
+          key={key++}
+          className={`rounded px-0.5 font-medium ${isSelf ? 'bg-yellow-500/20 text-yellow-400' : 'bg-primary/20 text-primary'}`}
+        >
+          @{match[3]}
+        </span>
+      );
     }
 
     lastIndex = regex.lastIndex;

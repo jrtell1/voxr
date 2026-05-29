@@ -84,7 +84,9 @@ defmodule VoxrWeb.RoomChannel do
       |> Enum.map(fn a -> %{url: a["url"], filename: a["filename"], content_type: a["content_type"]} end)
 
     case Chat.create_message(%{content: content, user_id: user.id, channel_id: channel_id, attachments: attachments}) do
-      {:ok, _message} -> {:reply, :ok, socket}
+      {:ok, message} ->
+        notify_mentions(message, user)
+        {:reply, :ok, socket}
       {:error, _} -> {:reply, {:error, %{reason: "invalid message"}}, socket}
     end
   end
@@ -137,6 +139,26 @@ defmodule VoxrWeb.RoomChannel do
       end),
       reactions: serialize_reactions(message.reactions)
     }
+  end
+
+  defp notify_mentions(message, sender) do
+    usernames =
+      Regex.scan(~r/@([a-zA-Z0-9_]+)/, message.content, capture: :all_but_first)
+      |> List.flatten()
+      |> Enum.uniq()
+
+    for username <- usernames do
+      case Accounts.get_user_by_username(username) do
+        nil -> :ok
+        %{id: id} when id != sender.id ->
+          Phoenix.PubSub.broadcast(Voxr.PubSub, "user:#{id}", {:mentioned, %{
+            from_display_name: sender.display_name,
+            from_username: sender.username,
+            content: message.content
+          }})
+        _ -> :ok
+      end
+    end
   end
 
   defp serialize_reactions(reactions) do

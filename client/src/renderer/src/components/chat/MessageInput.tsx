@@ -5,6 +5,8 @@ import { Kbd } from '@/components/ui/kbd';
 import { XIcon, PaperclipIcon } from 'lucide-react';
 import { searchEmoji, getEmojiQuery, type EmojiMatch } from '@/lib/emoji';
 import { customEmojiStore } from '@/stores/customEmojiStore';
+import { chatStore } from '@/stores/chatStore';
+import type { PresenceUser } from './UserList';
 
 interface Props {
   label: string;
@@ -22,11 +24,15 @@ export default function MessageInput({ label, onSubmit, onTyping, onUpArrow }: P
   const [uploading, setUploading] = useState(false);
   const [emojiResults, setEmojiResults] = useState<EmojiMatch[]>([]);
   const [emojiIndex, setEmojiIndex] = useState(0);
+  const [mentionResults, setMentionResults] = useState<PresenceUser[]>([]);
+  const [mentionIndex, setMentionIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastTypingRef = useRef(0);
   const emojiListRef = useRef<HTMLDivElement>(null);
+  const mentionListRef = useRef<HTMLDivElement>(null);
   const customEmojis = useSelector(customEmojiStore, (s) => s.emojis);
+  const allUsers = useSelector(chatStore, (s) => s.allUsers);
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -47,6 +53,13 @@ export default function MessageInput({ label, onSubmit, onTyping, onUpArrow }: P
       selected?.scrollIntoView({ block: 'nearest' });
     }
   }, [emojiIndex]);
+
+  useEffect(() => {
+    if (mentionListRef.current) {
+      const selected = mentionListRef.current.children[mentionIndex] as HTMLElement | undefined;
+      selected?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [mentionIndex]);
 
   function addFiles(incoming: File[]) {
     const images = incoming.filter((f) => f.type.startsWith('image/'));
@@ -72,6 +85,29 @@ export default function MessageInput({ label, onSubmit, onTyping, onUpArrow }: P
     });
   }
 
+  function getMentionQuery(val: string, cursorPos: number): string | null {
+    const before = val.slice(0, cursorPos);
+    const match = before.match(/@([a-zA-Z0-9_]*)$/);
+    return match ? match[1] : null;
+  }
+
+  function insertMention(user: PresenceUser) {
+    const el = textareaRef.current;
+    if (!el) return;
+    const pos = el.selectionStart ?? value.length;
+    const before = value.slice(0, pos);
+    const after = value.slice(pos);
+    const newBefore = before.replace(/@([a-zA-Z0-9_]*)$/, `@${user.username} `);
+    const newValue = newBefore + after;
+    setValue(newValue);
+    setMentionResults([]);
+    setMentionIndex(0);
+    requestAnimationFrame(() => {
+      el.selectionStart = el.selectionEnd = newBefore.length;
+      el.focus();
+    });
+  }
+
   function handleChange(e: ChangeEvent<HTMLTextAreaElement>) {
     const newValue = e.target.value;
     setValue(newValue);
@@ -83,6 +119,21 @@ export default function MessageInput({ label, onSubmit, onTyping, onUpArrow }: P
       setEmojiIndex(0);
     } else {
       setEmojiResults([]);
+    }
+
+    const mentionQuery = getMentionQuery(newValue, cursor);
+    if (mentionQuery !== null) {
+      const q = mentionQuery.toLowerCase();
+      const results = allUsers
+        .filter((u) =>
+          u.username.toLowerCase().includes(q) ||
+          (u.displayName?.toLowerCase().includes(q) ?? false)
+        )
+        .slice(0, 8);
+      setMentionResults(results);
+      setMentionIndex(0);
+    } else {
+      setMentionResults([]);
     }
 
     if (newValue && onTyping) {
@@ -125,10 +176,33 @@ export default function MessageInput({ label, onSubmit, onTyping, onUpArrow }: P
   }
 
   async function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === 'ArrowUp' && value === '' && emojiResults.length === 0) {
+    if (e.key === 'ArrowUp' && value === '' && emojiResults.length === 0 && mentionResults.length === 0) {
       e.preventDefault();
       onUpArrow?.();
       return;
+    }
+
+    if (mentionResults.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setMentionIndex((i) => (i + 1) % mentionResults.length);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setMentionIndex((i) => (i - 1 + mentionResults.length) % mentionResults.length);
+        return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        insertMention(mentionResults[mentionIndex]);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setMentionResults([]);
+        return;
+      }
     }
 
     if (emojiResults.length > 0) {
@@ -195,6 +269,27 @@ export default function MessageInput({ label, onSubmit, onTyping, onUpArrow }: P
       )}
 
       <div className="relative">
+        {mentionResults.length > 0 && (
+          <div
+            ref={mentionListRef}
+            className="absolute bottom-full left-0 mb-1 w-64 max-h-52 overflow-y-auto rounded-md border bg-popover shadow-md z-50"
+          >
+            {mentionResults.map((user, i) => (
+              <button
+                key={user.userId}
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); insertMention(user); }}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-muted ${i === mentionIndex ? 'bg-muted' : ''}`}
+              >
+                <span className="font-medium truncate">{user.displayName ?? user.username}</span>
+                {user.displayName && (
+                  <span className="text-muted-foreground truncate text-xs">@{user.username}</span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
         {emojiResults.length > 0 && (
           <div
             ref={emojiListRef}

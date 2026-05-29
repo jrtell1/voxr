@@ -96,6 +96,12 @@ defmodule VoxrWeb.UserChannel do
     {:noreply, socket}
   end
 
+  @impl true
+  def handle_info({:mentioned, data}, socket) do
+    push(socket, "mentioned", data)
+    {:noreply, socket}
+  end
+
   defp serialize_dm_channel(channel, current_user_id) do
     other_user =
       channel.channel_members

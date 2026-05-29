@@ -9,6 +9,7 @@ let _userChannel: PhxChannel | null = null;
 let _channelRef: PhxChannel | null = null;
 let _serverUrl = '';
 let _token = '';
+let _currentUsername = '';
 const _typingTimeouts = new Map<number, ReturnType<typeof setTimeout>>();
 
 export const scrollFlags = {
@@ -16,12 +17,18 @@ export const scrollFlags = {
   prevScrollHeight: null as number | null,
 };
 
-export function initChat(socket: Socket, userChannel: PhxChannel, serverUrl: string, token: string) {
+export function initChat(socket: Socket, userChannel: PhxChannel, serverUrl: string, token: string, currentUsername: string) {
   _socket = socket;
   _userChannel = userChannel;
   _serverUrl = serverUrl;
   _token = token;
+  _currentUsername = currentUsername;
   chatStore.setState((prev) => ({ ...prev, serverUrl }));
+
+  userChannel.on('mentioned', ({ from_display_name, from_username, content }: { from_display_name: string | null; from_username: string; content: string }) => {
+    const senderName = from_display_name ?? from_username;
+    window.electron?.notify(senderName, content);
+  });
 }
 
 function doJoin(topic: string, onJoinOk: (data: Record<string, unknown>) => void) {
@@ -42,6 +49,7 @@ function doJoin(topic: string, onJoinOk: (data: Record<string, unknown>) => void
         : [...prev.messages.slice(0, idx), msg, ...prev.messages.slice(idx)];
       return { ...prev, messages };
     });
+
   });
 
   phxChannel.on('unread_updated', ({ channel_id, count }: { channel_id: number; count: number }) => {
@@ -281,6 +289,7 @@ export function cleanupChat() {
   _userChannel = null;
   _serverUrl = '';
   _token = '';
+  _currentUsername = '';
   chatStore.setState(() => ({
     activeView: null,
     messages: [],

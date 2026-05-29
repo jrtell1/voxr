@@ -45,7 +45,7 @@ export default function Chat({ session, onDisconnect }: Props) {
       socket, userChannel, initialUnread, session.dmChannels,
       session.displayName, initialChannels, session.isAdmin,
     );
-    initChat(socket, userChannel, serverUrl, session.token);
+    initChat(socket, userChannel, serverUrl, session.token, username);
     initVoice(serverChannel);
     initCustomEmojis(serverUrl, session.token);
 
