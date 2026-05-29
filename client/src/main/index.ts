@@ -1,6 +1,8 @@
 import { app, BrowserWindow, ipcMain, IpcMainEvent, Notification, session, shell } from 'electron';
 import { join } from 'path';
 
+app.name = 'Voxr';
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
