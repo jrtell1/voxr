@@ -26,6 +26,21 @@ export default function Chat({ session, onDisconnect }: Props) {
   const pokeFrom = useSelector(serverStore, (s) => s.pokeFrom);
 
   useEffect(() => {
+    if (!activeView) {
+      document.title = serverName;
+      return;
+    }
+    if (activeView.type === 'channel') {
+      document.title = `#${activeView.channel.name} - ${serverName}`;
+    } else if (activeView.type === 'dm') {
+      const name = activeView.dmChannel.other_user.display_name ?? activeView.dmChannel.other_user.username;
+      document.title = `@${name} - ${serverName}`;
+    } else {
+      document.title = serverName;
+    }
+  }, [activeView, serverName]);
+
+  useEffect(() => {
     const serverChannel = initServer(
       socket, userChannel, initialUnread, session.dmChannels,
       session.displayName, initialChannels, session.isAdmin,
