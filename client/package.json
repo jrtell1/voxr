@@ -1,6 +1,6 @@
 {
   "name": "voxr-client",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Voxr desktop client",
   "main": "out/main/index.js",
   "scripts": {
