@@ -194,11 +194,6 @@ export default function MessageList({
                 </div>
               </ContextMenuTrigger>
               <ContextMenuContent>
-                {msg.user.id === currentUserId && (
-                  <ContextMenuItem onClick={() => onStartEdit(msg)}>
-                    Edit
-                  </ContextMenuItem>
-                )}
                 <ContextMenuSub>
                   <ContextMenuSubTrigger>React</ContextMenuSubTrigger>
                   <ContextMenuSubContent className="p-0 overflow-hidden">
@@ -215,6 +210,11 @@ export default function MessageList({
                     {msg.attachments.length > 1 ? `Copy image URL ${i + 1}` : 'Copy image URL'}
                   </ContextMenuItem>
                 ))}
+                {msg.user.id === currentUserId && (
+                  <ContextMenuItem onClick={() => onStartEdit(msg)}>
+                    Edit
+                  </ContextMenuItem>
+                )}
               </ContextMenuContent>
             </ContextMenu>
           </div>
