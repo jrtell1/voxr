@@ -70,6 +70,9 @@ export function joinVoiceChannel(channel: Channel) {
         }));
       });
 
+      _room = room;
+      voiceStore.setState((prev) => ({ ...prev, connectingChannelName: channel.name }));
+
       try {
         await room.connect(url, token);
         console.log('[Voice] connected, local identity:', room.localParticipant.identity);
@@ -81,14 +84,18 @@ export function joinVoiceChannel(channel: Channel) {
         await room.localParticipant.setMicrophoneEnabled(true);
         console.log('[Voice] microphone enabled');
 
-        _room = room;
+        _serverChannel?.push('confirm_voice_join', { channel_id: channel.id });
+
         voiceStore.setState((prev) => ({
           ...prev,
+          connectingChannelName: null,
           voiceState: { channelId: channel.id, channelName: channel.name, isSpeaking: false },
         }));
       } catch (err) {
         console.error('[Voice] connection failed:', err);
+        _room = null;
         room.disconnect();
+        voiceStore.setState((prev) => ({ ...prev, connectingChannelName: null }));
       }
     });
 }
@@ -97,7 +104,13 @@ export function leaveVoiceChannel() {
   _room?.disconnect();
   _room = null;
   _serverChannel?.push('leave_voice', {});
-  voiceStore.setState(() => ({ voiceState: null, isMuted: false, speakingUserIds: new Set() }));
+  voiceStore.setState(() => ({ voiceState: null, isMuted: false, speakingUserIds: new Set(), connectingChannelName: null }));
+}
+
+export function abortVoiceConnection() {
+  _room?.disconnect();
+  _room = null;
+  voiceStore.setState((prev) => ({ ...prev, connectingChannelName: null }));
 }
 
 export async function toggleMute() {
@@ -111,5 +124,5 @@ export function cleanupVoice() {
   _room?.disconnect();
   _room = null;
   _serverChannel = null;
-  voiceStore.setState(() => ({ voiceState: null, isMuted: false, speakingUserIds: new Set() }));
+  voiceStore.setState(() => ({ voiceState: null, isMuted: false, speakingUserIds: new Set(), connectingChannelName: null }));
 }

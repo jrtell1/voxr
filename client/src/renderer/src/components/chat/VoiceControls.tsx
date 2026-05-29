@@ -1,13 +1,35 @@
 import { useSelector } from '@tanstack/react-store';
-import { MicIcon, MicOffIcon, PhoneOffIcon } from 'lucide-react';
+import { MicIcon, MicOffIcon, PhoneOffIcon, XIcon } from 'lucide-react';
 import { voiceStore } from '../../stores/voiceStore';
-import { toggleMute, leaveVoiceChannel } from '../../lib/voiceActions';
+import { toggleMute, leaveVoiceChannel, abortVoiceConnection } from '../../lib/voiceActions';
 
 export default function VoiceControls() {
   const voiceState = useSelector(voiceStore, (s) => s.voiceState);
   const isMuted = useSelector(voiceStore, (s) => s.isMuted);
+  const connectingChannelName = useSelector(voiceStore, (s) => s.connectingChannelName);
 
-  if (!voiceState) return null;
+  if (!voiceState && !connectingChannelName) return null;
+
+  if (!voiceState) {
+    return (
+      <div className="border-t px-3 py-2 flex items-center gap-1.5 bg-muted/20 select-none">
+        <div className="flex-1 min-w-0 flex items-center gap-2">
+          <span className="size-2 rounded-full shrink-0 bg-yellow-400 animate-pulse" />
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground leading-none mb-0.5">Connecting…</p>
+            <p className="text-xs font-medium truncate leading-none">{connectingChannelName}</p>
+          </div>
+        </div>
+        <button
+          onClick={abortVoiceConnection}
+          title="Cancel"
+          className="rounded p-1.5 hover:bg-muted transition-colors text-destructive shrink-0"
+        >
+          <XIcon className="size-3.5" />
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="border-t px-3 py-2 flex items-center gap-1.5 bg-muted/20 select-none">

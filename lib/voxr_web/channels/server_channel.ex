@@ -44,10 +44,6 @@ defmodule VoxrWeb.ServerChannel do
     if channel.type != "voice" do
       {:reply, {:error, %{reason: "not a voice channel"}}, socket}
     else
-      Presence.update(socket, user.id, fn meta ->
-        Map.put(meta, :voice_channel_id, channel_id)
-      end)
-
       display_name = user.display_name || user.username
       room_name = "voice:#{channel_id}"
 
@@ -60,6 +56,18 @@ defmodule VoxrWeb.ServerChannel do
           {:reply, {:error, %{reason: "token generation failed"}}, socket}
       end
     end
+  end
+
+  @impl true
+  def handle_in("confirm_voice_join", %{"channel_id" => channel_id}, socket) do
+    user = socket.assigns.current_user
+    channel_id = if is_binary(channel_id), do: String.to_integer(channel_id), else: channel_id
+
+    Presence.update(socket, user.id, fn meta ->
+      Map.put(meta, :voice_channel_id, channel_id)
+    end)
+
+    {:reply, :ok, socket}
   end
 
   @impl true
