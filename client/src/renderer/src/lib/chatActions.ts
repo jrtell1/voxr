@@ -286,6 +286,7 @@ export function cleanupChat() {
   _typingTimeouts.forEach(clearTimeout);
   _typingTimeouts.clear();
   _socket = null;
+  _userChannel?.off('mentioned');
   _userChannel = null;
   _serverUrl = '';
   _token = '';
