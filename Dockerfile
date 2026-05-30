@@ -56,6 +56,11 @@ ENV MIX_ENV="prod"
 COPY --from=builder --chown=nobody:root /app/_build/${MIX_ENV}/rel/voxr ./
 RUN chmod +x /app/bin/*
 
+# Writable storage for user uploads, owned by the runtime user. A named volume
+# mounted here (see release compose files) inherits this ownership, so uploads
+# persist and remain writable. Must match :storage_dir in config/prod.exs.
+RUN mkdir -p /app/storage/uploads /app/storage/emojis && chown -R nobody /app/storage
+
 USER nobody
 
 CMD ["/app/bin/server"]

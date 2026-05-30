@@ -112,5 +112,5 @@ defmodule VoxrWeb.EmojiController do
     |> Enum.join("; ")
   end
 
-  defp emojis_dir, do: Path.join(:code.priv_dir(:voxr), "static/emojis")
+  defp emojis_dir, do: Voxr.Storage.dir("emojis")
 end

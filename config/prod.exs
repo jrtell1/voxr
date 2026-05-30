@@ -7,6 +7,11 @@ import Config
 # before starting your production server.
 config :voxr, VoxrWeb.Endpoint, cache_static_manifest: "priv/static/cache_manifest.json"
 
+# User uploads (images, custom emojis) live outside the versioned, read-only
+# release tree at a writable, volume-mounted path (see the release compose
+# files), so they persist across redeploys and version bumps.
+config :voxr, :storage_dir, "/app/storage"
+
 # Force using SSL in production. This also sets the "strict-security-transport" header,
 # known as HSTS. If you have a health check endpoint, you may want to exclude it below.
 # Note `:force_ssl` is required to be set at compile-time.

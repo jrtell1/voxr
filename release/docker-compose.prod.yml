@@ -54,6 +54,8 @@ services:
       LIVEKIT_URL: ${LIVEKIT_URL:-ws://livekit:7880}
       LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
       LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
+    volumes:
+      - storage_data:/app/storage
     depends_on:
       postgres:
         condition: service_healthy
@@ -65,3 +67,4 @@ services:
 
 volumes:
   postgres_data:
+  storage_data:

@@ -62,5 +62,5 @@ defmodule VoxrWeb.UploadController do
     end
   end
 
-  defp uploads_dir, do: Path.join(:code.priv_dir(:voxr), "static/uploads")
+  defp uploads_dir, do: Voxr.Storage.dir("uploads")
 end

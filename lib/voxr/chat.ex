@@ -276,7 +276,7 @@ defmodule Voxr.Chat do
         {:error, :not_found}
 
       emoji ->
-        file_path = Path.join(:code.priv_dir(:voxr), "static#{emoji.url}")
+        file_path = Path.join(Voxr.Storage.dir("emojis"), Path.basename(emoji.url))
         File.rm(file_path)
         Repo.delete(emoji)
     end
