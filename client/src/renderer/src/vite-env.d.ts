@@ -9,5 +9,6 @@ interface Window {
     shake: () => void;
     notify: (title: string, body: string) => void;
     openExternal: (url: string) => void;
+    setBadge: (dataUrl: string | null) => void;
   };
 }

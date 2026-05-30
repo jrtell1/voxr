@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, IpcMainEvent, Notification, session, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, IpcMainEvent, nativeImage, Notification, session, shell } from 'electron';
 import { join } from 'path';
 
 app.name = 'Voxr';
@@ -70,6 +70,24 @@ ipcMain.on('window:shake', (e) => {
 });
 
 ipcMain.on('shell:openExternal', (_, url: string) => shell.openExternal(url));
+
+ipcMain.on('taskbar:badge', (e, dataUrl: string | null) => {
+  const win = getWindow(e);
+  if (!win) return;
+
+  // macOS / Linux support a numeric dock/taskbar badge directly.
+  if (process.platform !== 'win32') {
+    app.setBadgeCount(dataUrl ? 1 : 0);
+    return;
+  }
+
+  // Windows uses an overlay icon image drawn by the renderer.
+  if (dataUrl) {
+    win.setOverlayIcon(nativeImage.createFromDataURL(dataUrl), 'Unread messages');
+  } else {
+    win.setOverlayIcon(null, '');
+  }
+});
 
 ipcMain.on('notification:show', (e, { title, body }: { title: string; body: string }) => {
   new Notification({ title, body, silent: true }).show();

@@ -19,11 +19,27 @@ interface Props {
   onDisconnect: () => void;
 }
 
+// Draws the small red dot used as the taskbar overlay icon (Windows) and
+// returns it as a data URL. macOS/Linux ignore the image and just show a badge.
+function makeBadgeIcon(): string {
+  const size = 32;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  ctx.beginPath();
+  ctx.arc(size / 2, size / 2, size / 2 - 2, 0, Math.PI * 2);
+  ctx.fillStyle = '#ef4444';
+  ctx.fill();
+  return canvas.toDataURL('image/png');
+}
+
 export default function Chat({ session, onDisconnect }: Props) {
   const { socket, userChannel, serverUrl, serverName, username, channels: initialChannels, initialUnread } = session;
 
   const activeView = useSelector(chatStore, (s) => s.activeView);
   const pokeFrom = useSelector(serverStore, (s) => s.pokeFrom);
+  const unread = useSelector(serverStore, (s) => s.unread);
 
   useEffect(() => {
     if (!activeView) {
@@ -39,6 +55,11 @@ export default function Chat({ session, onDisconnect }: Props) {
       document.title = serverName;
     }
   }, [activeView, serverName]);
+
+  useEffect(() => {
+    const hasUnread = Object.values(unread).some((c) => c > 0);
+    window.electron?.setBadge(hasUnread ? makeBadgeIcon() : null);
+  }, [unread]);
 
   useEffect(() => {
     const serverChannel = initServer(
@@ -59,6 +80,7 @@ export default function Chat({ session, onDisconnect }: Props) {
       cleanupChat();
       cleanupServer();
       cleanupVoice();
+      window.electron?.setBadge(null);
     };
   }, []);
 

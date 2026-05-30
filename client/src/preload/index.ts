@@ -8,4 +8,5 @@ contextBridge.exposeInMainWorld('electron', {
   shake: () => ipcRenderer.send('window:shake'),
   notify: (title: string, body: string) => ipcRenderer.send('notification:show', { title, body }),
   openExternal: (url: string) => ipcRenderer.send('shell:openExternal', url),
+  setBadge: (dataUrl: string | null) => ipcRenderer.send('taskbar:badge', dataUrl),
 });
