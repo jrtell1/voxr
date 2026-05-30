@@ -20,6 +20,8 @@ function createWindow() {
     },
   });
 
+  win.on('focus', () => win.flashFrame(false));
+
   if (process.env['ELECTRON_RENDERER_URL']) {
     win.loadURL(process.env['ELECTRON_RENDERER_URL']);
   } else {
@@ -69,8 +71,11 @@ ipcMain.on('window:shake', (e) => {
 
 ipcMain.on('shell:openExternal', (_, url: string) => shell.openExternal(url));
 
-ipcMain.on('notification:show', (_, { title, body }: { title: string; body: string }) => {
+ipcMain.on('notification:show', (e, { title, body }: { title: string; body: string }) => {
   new Notification({ title, body, silent: true }).show();
+
+  const win = getWindow(e);
+  if (win && !win.isFocused()) win.flashFrame(true);
 });
 
 app.whenReady().then(() => {
