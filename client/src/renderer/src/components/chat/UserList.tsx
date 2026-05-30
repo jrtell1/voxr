@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { useSelector } from '@tanstack/react-store';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -26,7 +26,7 @@ interface Props {
   username: string;
 }
 
-function UserRow({ user, online, currentUsername }: {
+const UserRow = memo(function UserRow({ user, online, currentUsername }: {
   user: PresenceUser;
   online: boolean;
   currentUsername: string;
@@ -57,7 +57,13 @@ function UserRow({ user, online, currentUsername }: {
       </UserPopover>
     </SidebarMenuItem>
   );
-}
+}, (a, b) =>
+  a.online === b.online &&
+  a.currentUsername === b.currentUsername &&
+  a.user.id === b.user.id &&
+  a.user.username === b.user.username &&
+  a.user.displayName === b.user.displayName,
+);
 
 export default function UserList({ username }: Props) {
   const presences = useSelector(serverStore, (s) => s.presences);

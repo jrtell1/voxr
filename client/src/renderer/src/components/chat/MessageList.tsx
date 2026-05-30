@@ -81,40 +81,85 @@ export default function MessageList({
     return () => observer.disconnect();
   }, [hasMore]);
 
+  // A single context menu is shared by every row instead of mounting one Radix
+  // ContextMenu per message. On right-click we resolve which message was hit
+  // (via the row's data-msg-id) and render the menu for it.
+  const [menuMsg, setMenuMsg] = useState<Message | null>(null);
+
+  function handleRowContextMenu(e: React.MouseEvent) {
+    const el = (e.target as HTMLElement).closest('[data-msg-id]');
+    const id = el ? Number(el.getAttribute('data-msg-id')) : NaN;
+    setMenuMsg(Number.isNaN(id) ? null : messages.find((m) => m.id === id) ?? null);
+  }
+
   return (
-    <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pt-4 px-1 flex flex-col gap-0.5 select-text">
-      {hasMore && (
-        <div ref={sentinelRef} className="flex justify-center py-2">
-          {loadingMore && <Spinner />}
+    <ContextMenu onOpenChange={(open) => { if (!open) setMenuMsg(null); }}>
+      <ContextMenuTrigger asChild>
+        <div
+          ref={scrollContainerRef}
+          onContextMenu={handleRowContextMenu}
+          className="flex-1 overflow-y-auto pt-4 px-1 flex flex-col gap-0.5 select-text"
+        >
+          {hasMore && (
+            <div ref={sentinelRef} className="flex justify-center py-2">
+              {loadingMore && <Spinner />}
+            </div>
+          )}
+          {messages.map((msg, i) => {
+            const isGrouped = i > 0
+              && messages[i - 1].user.username === msg.user.username
+              && i !== unreadStartIndex
+              && new Date(msg.inserted_at).getTime() - new Date(messages[i - 1].inserted_at).getTime() < 30 * 60 * 1000;
+            return (
+              <MessageRow
+                key={msg.id ?? i}
+                msg={msg}
+                isGrouped={isGrouped}
+                isUnreadStart={i === unreadStartIndex}
+                dividerRef={dividerRef}
+                currentUsername={currentUsername}
+                currentUserId={currentUserId}
+                serverUrl={serverUrl}
+                customEmojiMap={customEmojiMap}
+                isEditing={msg.id === editingMessageId}
+                onPoke={onPoke}
+                onOpenDm={onOpenDm}
+                onCancelEdit={onCancelEdit}
+                onSubmitEdit={onSubmitEdit}
+              />
+            );
+          })}
+          <div ref={messagesEndRef} />
         </div>
-      )}
-      {messages.map((msg, i) => {
-        const isGrouped = i > 0
-          && messages[i - 1].user.username === msg.user.username
-          && i !== unreadStartIndex
-          && new Date(msg.inserted_at).getTime() - new Date(messages[i - 1].inserted_at).getTime() < 30 * 60 * 1000;
-        return (
-          <MessageRow
-            key={msg.id ?? i}
-            msg={msg}
-            isGrouped={isGrouped}
-            isUnreadStart={i === unreadStartIndex}
-            dividerRef={dividerRef}
-            currentUsername={currentUsername}
-            currentUserId={currentUserId}
-            serverUrl={serverUrl}
-            customEmojiMap={customEmojiMap}
-            isEditing={msg.id === editingMessageId}
-            onPoke={onPoke}
-            onOpenDm={onOpenDm}
-            onStartEdit={onStartEdit}
-            onCancelEdit={onCancelEdit}
-            onSubmitEdit={onSubmitEdit}
-          />
-        );
-      })}
-      <div ref={messagesEndRef} />
-    </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        {menuMsg && (
+          <>
+            <ContextMenuSub>
+              <ContextMenuSubTrigger>React</ContextMenuSubTrigger>
+              <ContextMenuSubContent className="p-0 overflow-hidden">
+                <EmojiReactionPicker onSelect={(emoji) => sendReaction(menuMsg.id, emoji)} />
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+            {menuMsg.content && (
+              <ContextMenuItem onClick={() => copyText(menuMsg.content)}>
+                Copy text
+              </ContextMenuItem>
+            )}
+            {menuMsg.attachments?.map((a, i) => (
+              <ContextMenuItem key={i} onClick={() => copyText(`${serverUrl}${a.url}`)}>
+                {menuMsg.attachments.length > 1 ? `Copy image URL ${i + 1}` : 'Copy image URL'}
+              </ContextMenuItem>
+            ))}
+            {menuMsg.user.id === currentUserId && (
+              <ContextMenuItem onClick={() => onStartEdit(menuMsg)}>
+                Edit
+              </ContextMenuItem>
+            )}
+          </>
+        )}
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }
 
@@ -130,14 +175,13 @@ interface MessageRowProps {
   isEditing: boolean;
   onPoke: (userId: number) => void;
   onOpenDm: (user: ChatUser) => void;
-  onStartEdit: (msg: Message) => void;
   onCancelEdit: () => void;
   onSubmitEdit: (messageId: number, content: string) => Promise<void>;
 }
 
 // Memoized so an incoming message only mounts its own row instead of
-// re-rendering every existing row (each carries a Radix ContextMenu plus
-// regex content parsing — expensive to rebuild in bulk).
+// re-rendering every existing row. The context menu is shared at the list
+// level (see MessageList) rather than one Radix instance per row.
 const MessageRow = React.memo(function MessageRow({
   msg,
   isGrouped,
@@ -150,7 +194,6 @@ const MessageRow = React.memo(function MessageRow({
   isEditing,
   onPoke,
   onOpenDm,
-  onStartEdit,
   onCancelEdit,
   onSubmitEdit,
 }: MessageRowProps) {
@@ -165,9 +208,7 @@ const MessageRow = React.memo(function MessageRow({
           <div className="flex-1 h-px bg-destructive/60" />
         </div>
       )}
-      <ContextMenu>
-        <ContextMenuTrigger asChild>
-          <div className={`group/msg flex gap-3 px-2 rounded-md hover:bg-muted/40 items-start ${isGrouped ? 'py-0.5' : 'py-1'}`} style={{ userSelect: 'text' }}>
+      <div data-msg-id={msg.id} className={`group/msg flex gap-3 px-2 rounded-md hover:bg-muted/40 items-start ${isGrouped ? 'py-0.5' : 'py-1'}`} style={{ userSelect: 'text' }}>
             {isGrouped
               ? <span className="w-8 shrink-0 text-right text-[10px] leading-5 text-muted-foreground/0 group-hover/msg:text-muted-foreground transition-colors mt-0.5">{formatTimeShort(msg.inserted_at)}</span>
               : (
@@ -252,32 +293,7 @@ const MessageRow = React.memo(function MessageRow({
                 </div>
               )}
             </div>
-          </div>
-        </ContextMenuTrigger>
-        <ContextMenuContent>
-          <ContextMenuSub>
-            <ContextMenuSubTrigger>React</ContextMenuSubTrigger>
-            <ContextMenuSubContent className="p-0 overflow-hidden">
-              <EmojiReactionPicker onSelect={(emoji) => sendReaction(msg.id, emoji)} />
-            </ContextMenuSubContent>
-          </ContextMenuSub>
-          {msg.content && (
-            <ContextMenuItem onClick={() => copyText(msg.content)}>
-              Copy text
-            </ContextMenuItem>
-          )}
-          {msg.attachments?.map((a, i) => (
-            <ContextMenuItem key={i} onClick={() => copyText(`${serverUrl}${a.url}`)}>
-              {msg.attachments.length > 1 ? `Copy image URL ${i + 1}` : 'Copy image URL'}
-            </ContextMenuItem>
-          ))}
-          {msg.user.id === currentUserId && (
-            <ContextMenuItem onClick={() => onStartEdit(msg)}>
-              Edit
-            </ContextMenuItem>
-          )}
-        </ContextMenuContent>
-      </ContextMenu>
+      </div>
     </div>
   );
 });

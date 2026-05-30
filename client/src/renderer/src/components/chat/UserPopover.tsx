@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -13,10 +13,23 @@ interface Props {
 }
 
 export default function UserPopover({ user, isSelf, onPoke, onOpenDm, children }: Props) {
+  // Radix Popover is relatively heavy to mount (context, refs, listeners).
+  // Rendering one per message row and per user-list entry means hundreds of
+  // them on a channel switch. Stay as a cheap pass-through until the user
+  // actually clicks the trigger, then mount the real Popover (already open).
+  const [armed, setArmed] = useState(false);
   const visibleName = user.display_name ?? user.username;
 
+  if (!armed) {
+    return (
+      <span style={{ display: 'contents' }} onClick={() => setArmed(true)}>
+        {children}
+      </span>
+    );
+  }
+
   return (
-    <Popover>
+    <Popover defaultOpen onOpenChange={(open) => { if (!open) setArmed(false); }}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
       <PopoverContent className="w-56 p-4" side="right" align="start">
         <div className="flex flex-col gap-3">
