@@ -12,9 +12,17 @@ let _token = '';
 let _currentUsername = '';
 const _typingTimeouts = new Map<number, ReturnType<typeof setTimeout>>();
 
+// Max messages kept mounted while live. Older ones stay fetchable via
+// scroll-up (load_more); this keeps a busy channel from growing the DOM
+// (and re-render cost) without bound.
+const LIVE_MESSAGE_CAP = 100;
+
 export const scrollFlags = {
   scrollToUnread: false,
   prevScrollHeight: null as number | null,
+  // Tracks whether the user is pinned to the bottom (following the live tail).
+  // Updated by MessageArea's scroll handler; only true when near the bottom.
+  atBottom: true,
 };
 
 export function initChat(socket: Socket, userChannel: PhxChannel, serverUrl: string, token: string, currentUsername: string) {
@@ -44,12 +52,27 @@ function doJoin(topic: string, onJoinOk: (data: Record<string, unknown>) => void
     chatStore.setState((prev) => {
       if (prev.messages.some((m) => m.id === msg.id)) return prev;
       const idx = prev.messages.findIndex((m) => m.id > msg.id);
-      const messages = idx === -1
+      const inserted = idx === -1
         ? [...prev.messages, msg]
         : [...prev.messages.slice(0, idx), msg, ...prev.messages.slice(idx)];
-      return { ...prev, messages };
-    });
 
+      // Only trim while the user is at the bottom — trimming the top while
+      // they're scrolled up reading history would yank content out from under
+      // them. When scrolled up we let it grow; the next message at bottom
+      // trims it back down.
+      if (!scrollFlags.atBottom || inserted.length <= LIVE_MESSAGE_CAP) {
+        return { ...prev, messages: inserted };
+      }
+
+      const removed = inserted.length - LIVE_MESSAGE_CAP;
+      const messages = inserted.slice(removed);
+      const unreadStartIndex =
+        prev.unreadStartIndex === null || prev.unreadStartIndex - removed < 0
+          ? null
+          : prev.unreadStartIndex - removed;
+      // We dropped older messages, so there are now more to fetch above.
+      return { ...prev, messages, unreadStartIndex, hasMore: true };
+    });
   });
 
   phxChannel.on('unread_updated', ({ channel_id, count }: { channel_id: number; count: number }) => {
@@ -93,6 +116,8 @@ function doJoin(topic: string, onJoinOk: (data: Record<string, unknown>) => void
 }
 
 function switchPhxChannel(topic: string, onJoinOk: (data: Record<string, unknown>) => void) {
+  // New channel starts pinned to the bottom (or the unread divider).
+  scrollFlags.atBottom = true;
   chatStore.setState((prev) => ({ ...prev, hasMore: false, loadingMore: false }));
 
   const connect = () => doJoin(topic, onJoinOk);

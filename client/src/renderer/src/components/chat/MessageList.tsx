@@ -89,141 +89,198 @@ export default function MessageList({
         </div>
       )}
       {messages.map((msg, i) => {
-        const visibleName = msg.user.display_name ?? msg.user.username;
-        const isSelf = msg.user.username === currentUsername;
         const isGrouped = i > 0
           && messages[i - 1].user.username === msg.user.username
           && i !== unreadStartIndex
           && new Date(msg.inserted_at).getTime() - new Date(messages[i - 1].inserted_at).getTime() < 30 * 60 * 1000;
         return (
-          <div key={msg.id ?? i}>
-            {i === unreadStartIndex && (
-              <div ref={dividerRef} className="flex items-center gap-3 my-3">
-                <div className="flex-1 h-px bg-destructive/60" />
-                <span className="text-xs font-semibold text-destructive shrink-0">New messages</span>
-                <div className="flex-1 h-px bg-destructive/60" />
-              </div>
-            )}
-            <ContextMenu>
-              <ContextMenuTrigger asChild>
-                <div className={`group/msg flex gap-3 px-2 rounded-md hover:bg-muted/40 items-start ${isGrouped ? 'py-0.5' : 'py-1'}`} style={{ userSelect: 'text' }}>
-                  {isGrouped
-                    ? <span className="w-8 shrink-0 text-right text-[10px] leading-5 text-muted-foreground/0 group-hover/msg:text-muted-foreground transition-colors mt-0.5">{formatTimeShort(msg.inserted_at)}</span>
-                    : (
-                      <UserPopover user={msg.user} isSelf={isSelf} onPoke={onPoke} onOpenDm={onOpenDm}>
-                        <button className="mt-0.5 shrink-0 cursor-pointer no-drag-region" style={{ userSelect: 'none' }}>
-                          <Avatar size="default">
-                            <AvatarFallback>{visibleName[0].toUpperCase()}</AvatarFallback>
-                          </Avatar>
-                        </button>
-                      </UserPopover>
-                    )
-                  }
-                  <div className="min-w-0 flex-1">
-                    {!isGrouped && (
-                      <div className="flex items-baseline gap-2 mb-0.5">
-                        <UserPopover user={msg.user} isSelf={isSelf} onPoke={onPoke} onOpenDm={onOpenDm}>
-                          <button className="font-semibold text-sm cursor-pointer hover:underline no-drag-region" style={{ userSelect: 'none' }}>
-                            {visibleName}
-                          </button>
-                        </UserPopover>
-                        <span className="text-xs text-muted-foreground">{formatTime(msg.inserted_at)}</span>
-                      </div>
-                    )}
-                    {msg.id === editingMessageId ? (
-                      <InlineEditInput
-                        initialContent={msg.content}
-                        messageId={msg.id}
-                        onSubmit={onSubmitEdit}
-                        onCancel={onCancelEdit}
-                      />
-                    ) : (
-                      msg.content && (
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                          {renderContent(msg.content, customEmojiMap, currentUsername)}
-                          {msg.is_edited && <span className="text-xs text-muted-foreground ml-1">(edited)</span>}
-                        </p>
-                      )
-                    )}
-                    {msg.id !== editingMessageId && msg.content && extractYouTubeIds(msg.content).map((id) => (
-                      <div key={id} className="mt-2 rounded-lg overflow-hidden border max-w-sm">
-                        <iframe
-                          src={`https://www.youtube.com/embed/${id}`}
-                          title="YouTube video"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                          className="w-full aspect-video"
-                        />
-                      </div>
-                    ))}
-                    {msg.attachments?.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {msg.attachments.map((a, i) => {
-                          const src = `${serverUrl}${a.url}`;
-                          const imgClass = 'max-h-60 max-w-xs rounded-md border object-contain hover:opacity-90 transition-opacity';
-                          return (
-                            <a key={i} href={src} target="_blank" rel="noreferrer" className="shrink-0">
-                              <img src={src} alt={a.filename} className={imgClass} />
-                            </a>
-                          );
-                        })}
-                      </div>
-                    )}
-                    {msg.reactions?.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1.5" style={{ userSelect: 'none' }}>
-                        {msg.reactions.map((r) => {
-                          const isOwn = r.user_ids.includes(currentUserId);
-                          return (
-                            <button
-                              key={r.emoji}
-                              onClick={() => sendReaction(msg.id, r.emoji)}
-                              className={`flex items-center gap-1 text-xs px-1 py-0.5 rounded-md border transition-colors cursor-pointer ${
-                                isOwn
-                                  ? 'bg-primary/20 border-primary/40 hover:bg-primary/30'
-                                  : 'bg-muted/40 border-border hover:bg-muted'
-                              }`}
-                            >
-                              {renderReactionEmoji(r.emoji, customEmojiMap)}
-                              <span>{r.count}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </ContextMenuTrigger>
-              <ContextMenuContent>
-                <ContextMenuSub>
-                  <ContextMenuSubTrigger>React</ContextMenuSubTrigger>
-                  <ContextMenuSubContent className="p-0 overflow-hidden">
-                    <EmojiReactionPicker onSelect={(emoji) => sendReaction(msg.id, emoji)} />
-                  </ContextMenuSubContent>
-                </ContextMenuSub>
-                {msg.content && (
-                  <ContextMenuItem onClick={() => copyText(msg.content)}>
-                    Copy text
-                  </ContextMenuItem>
-                )}
-                {msg.attachments?.map((a, i) => (
-                  <ContextMenuItem key={i} onClick={() => copyText(`${serverUrl}${a.url}`)}>
-                    {msg.attachments.length > 1 ? `Copy image URL ${i + 1}` : 'Copy image URL'}
-                  </ContextMenuItem>
-                ))}
-                {msg.user.id === currentUserId && (
-                  <ContextMenuItem onClick={() => onStartEdit(msg)}>
-                    Edit
-                  </ContextMenuItem>
-                )}
-              </ContextMenuContent>
-            </ContextMenu>
-          </div>
+          <MessageRow
+            key={msg.id ?? i}
+            msg={msg}
+            isGrouped={isGrouped}
+            isUnreadStart={i === unreadStartIndex}
+            dividerRef={dividerRef}
+            currentUsername={currentUsername}
+            currentUserId={currentUserId}
+            serverUrl={serverUrl}
+            customEmojiMap={customEmojiMap}
+            isEditing={msg.id === editingMessageId}
+            onPoke={onPoke}
+            onOpenDm={onOpenDm}
+            onStartEdit={onStartEdit}
+            onCancelEdit={onCancelEdit}
+            onSubmitEdit={onSubmitEdit}
+          />
         );
       })}
       <div ref={messagesEndRef} />
     </div>
   );
 }
+
+interface MessageRowProps {
+  msg: Message;
+  isGrouped: boolean;
+  isUnreadStart: boolean;
+  dividerRef: RefObject<HTMLDivElement | null>;
+  currentUsername: string;
+  currentUserId: number;
+  serverUrl: string;
+  customEmojiMap: Map<string, CustomEmoji>;
+  isEditing: boolean;
+  onPoke: (userId: number) => void;
+  onOpenDm: (user: ChatUser) => void;
+  onStartEdit: (msg: Message) => void;
+  onCancelEdit: () => void;
+  onSubmitEdit: (messageId: number, content: string) => Promise<void>;
+}
+
+// Memoized so an incoming message only mounts its own row instead of
+// re-rendering every existing row (each carries a Radix ContextMenu plus
+// regex content parsing — expensive to rebuild in bulk).
+const MessageRow = React.memo(function MessageRow({
+  msg,
+  isGrouped,
+  isUnreadStart,
+  dividerRef,
+  currentUsername,
+  currentUserId,
+  serverUrl,
+  customEmojiMap,
+  isEditing,
+  onPoke,
+  onOpenDm,
+  onStartEdit,
+  onCancelEdit,
+  onSubmitEdit,
+}: MessageRowProps) {
+  const visibleName = msg.user.display_name ?? msg.user.username;
+  const isSelf = msg.user.username === currentUsername;
+  return (
+    <div>
+      {isUnreadStart && (
+        <div ref={dividerRef} className="flex items-center gap-3 my-3">
+          <div className="flex-1 h-px bg-destructive/60" />
+          <span className="text-xs font-semibold text-destructive shrink-0">New messages</span>
+          <div className="flex-1 h-px bg-destructive/60" />
+        </div>
+      )}
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <div className={`group/msg flex gap-3 px-2 rounded-md hover:bg-muted/40 items-start ${isGrouped ? 'py-0.5' : 'py-1'}`} style={{ userSelect: 'text' }}>
+            {isGrouped
+              ? <span className="w-8 shrink-0 text-right text-[10px] leading-5 text-muted-foreground/0 group-hover/msg:text-muted-foreground transition-colors mt-0.5">{formatTimeShort(msg.inserted_at)}</span>
+              : (
+                <UserPopover user={msg.user} isSelf={isSelf} onPoke={onPoke} onOpenDm={onOpenDm}>
+                  <button className="mt-0.5 shrink-0 cursor-pointer no-drag-region" style={{ userSelect: 'none' }}>
+                    <Avatar size="default">
+                      <AvatarFallback>{visibleName[0].toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                  </button>
+                </UserPopover>
+              )
+            }
+            <div className="min-w-0 flex-1">
+              {!isGrouped && (
+                <div className="flex items-baseline gap-2 mb-0.5">
+                  <UserPopover user={msg.user} isSelf={isSelf} onPoke={onPoke} onOpenDm={onOpenDm}>
+                    <button className="font-semibold text-sm cursor-pointer hover:underline no-drag-region" style={{ userSelect: 'none' }}>
+                      {visibleName}
+                    </button>
+                  </UserPopover>
+                  <span className="text-xs text-muted-foreground">{formatTime(msg.inserted_at)}</span>
+                </div>
+              )}
+              {isEditing ? (
+                <InlineEditInput
+                  initialContent={msg.content}
+                  messageId={msg.id}
+                  onSubmit={onSubmitEdit}
+                  onCancel={onCancelEdit}
+                />
+              ) : (
+                msg.content && (
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                    {renderContent(msg.content, customEmojiMap, currentUsername)}
+                    {msg.is_edited && <span className="text-xs text-muted-foreground ml-1">(edited)</span>}
+                  </p>
+                )
+              )}
+              {!isEditing && msg.content && extractYouTubeIds(msg.content).map((id) => (
+                <div key={id} className="mt-2 rounded-lg overflow-hidden border max-w-sm">
+                  <iframe
+                    src={`https://www.youtube.com/embed/${id}`}
+                    title="YouTube video"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="w-full aspect-video"
+                  />
+                </div>
+              ))}
+              {msg.attachments?.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {msg.attachments.map((a, i) => {
+                    const src = `${serverUrl}${a.url}`;
+                    const imgClass = 'max-h-60 max-w-xs rounded-md border object-contain hover:opacity-90 transition-opacity';
+                    return (
+                      <a key={i} href={src} target="_blank" rel="noreferrer" className="shrink-0">
+                        <img src={src} alt={a.filename} className={imgClass} />
+                      </a>
+                    );
+                  })}
+                </div>
+              )}
+              {msg.reactions?.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1.5" style={{ userSelect: 'none' }}>
+                  {msg.reactions.map((r) => {
+                    const isOwn = r.user_ids.includes(currentUserId);
+                    return (
+                      <button
+                        key={r.emoji}
+                        onClick={() => sendReaction(msg.id, r.emoji)}
+                        className={`flex items-center gap-1 text-xs px-1 py-0.5 rounded-md border transition-colors cursor-pointer ${
+                          isOwn
+                            ? 'bg-primary/20 border-primary/40 hover:bg-primary/30'
+                            : 'bg-muted/40 border-border hover:bg-muted'
+                        }`}
+                      >
+                        {renderReactionEmoji(r.emoji, customEmojiMap)}
+                        <span>{r.count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuSub>
+            <ContextMenuSubTrigger>React</ContextMenuSubTrigger>
+            <ContextMenuSubContent className="p-0 overflow-hidden">
+              <EmojiReactionPicker onSelect={(emoji) => sendReaction(msg.id, emoji)} />
+            </ContextMenuSubContent>
+          </ContextMenuSub>
+          {msg.content && (
+            <ContextMenuItem onClick={() => copyText(msg.content)}>
+              Copy text
+            </ContextMenuItem>
+          )}
+          {msg.attachments?.map((a, i) => (
+            <ContextMenuItem key={i} onClick={() => copyText(`${serverUrl}${a.url}`)}>
+              {msg.attachments.length > 1 ? `Copy image URL ${i + 1}` : 'Copy image URL'}
+            </ContextMenuItem>
+          ))}
+          {msg.user.id === currentUserId && (
+            <ContextMenuItem onClick={() => onStartEdit(msg)}>
+              Edit
+            </ContextMenuItem>
+          )}
+        </ContextMenuContent>
+      </ContextMenu>
+    </div>
+  );
+});
 
 function InlineEditInput({ initialContent, messageId, onSubmit, onCancel }: {
   initialContent: string;

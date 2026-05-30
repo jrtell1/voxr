@@ -1,4 +1,4 @@
-import { useLayoutEffect, useEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useEffect, useRef, useState, useCallback } from 'react';
 import { useSelector } from '@tanstack/react-store';
 import type { Message } from '@/types';
 import { chatStore } from '@/stores/chatStore';
@@ -40,11 +40,30 @@ export default function MessageArea({ username, userId }: Props) {
       dividerRef.current.scrollIntoView();
       scrollFlags.scrollToUnread = false;
       shouldScrollToEndRef.current = false;
-    } else {
+    } else if (scrollFlags.atBottom) {
+      // Only stick to the bottom if the user was already following the tail.
+      // If they've scrolled up to read, leave their position alone.
       messagesEndRef.current?.scrollIntoView();
       shouldScrollToEndRef.current = true;
+    } else {
+      shouldScrollToEndRef.current = false;
     }
   }, [messages]);
+
+  // Keep scrollFlags.atBottom in sync with the user's scroll position. It's
+  // only updated by real scroll events (not content growth), so when a new
+  // message arrives the value still reflects where the user actually is.
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const onScroll = () => {
+      scrollFlags.atBottom =
+        container.scrollHeight - container.scrollTop - container.clientHeight < 80;
+    };
+    onScroll();
+    container.addEventListener('scroll', onScroll, { passive: true });
+    return () => container.removeEventListener('scroll', onScroll);
+  }, []);
 
   useEffect(() => {
     if (!shouldScrollToEndRef.current) return;
@@ -68,18 +87,14 @@ export default function MessageArea({ username, userId }: Props) {
     setEditingMessageId(null);
   }, [activeView]);
 
-  function handleStartEdit(msg: Message) {
-    setEditingMessageId(msg.id);
-  }
-
-  function handleCancelEdit() {
-    setEditingMessageId(null);
-  }
-
-  async function handleSubmitEdit(messageId: number, content: string) {
+  // Stable identities so memoized message rows don't re-render every time
+  // MessageArea re-renders.
+  const handleStartEdit = useCallback((msg: Message) => setEditingMessageId(msg.id), []);
+  const handleCancelEdit = useCallback(() => setEditingMessageId(null), []);
+  const handleSubmitEdit = useCallback(async (messageId: number, content: string) => {
     await editMessage(messageId, content);
     setEditingMessageId(null);
-  }
+  }, []);
 
   function handleUpArrow() {
     const lastOwn = [...messages].reverse().find((m) => m.user.id === userId && m.content.trim() !== '');
