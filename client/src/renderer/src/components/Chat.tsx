@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useSelector } from '@tanstack/react-store';
 import { disconnect } from '@/socket';
 import { getLastChannel } from '@/lib/storage';
@@ -56,8 +56,15 @@ export default function Chat({ session, onDisconnect }: Props) {
     }
   }, [activeView, serverName]);
 
+  const prevHasUnreadRef = useRef<boolean | null>(null);
   useEffect(() => {
+    // unread counts change on every incoming message; the badge only depends
+    // on whether *anything* is unread. Re-pushing the overlay icon on each
+    // count change rebuilds a native image + crosses IPC needlessly (and leaks
+    // native overlay bitmaps under load), so only act when the boolean flips.
     const hasUnread = Object.values(unread).some((c) => c > 0);
+    if (hasUnread === prevHasUnreadRef.current) return;
+    prevHasUnreadRef.current = hasUnread;
     window.electron?.setBadge(hasUnread ? makeBadgeIcon() : null);
   }, [unread]);
 

@@ -17,6 +17,11 @@ const _typingTimeouts = new Map<number, ReturnType<typeof setTimeout>>();
 // (and re-render cost) without bound.
 const LIVE_MESSAGE_CAP = 100;
 
+// Absolute ceiling enforced even when the user has scrolled up (where we
+// normally avoid trimming so their view isn't yanked). Without this, a busy
+// channel viewed while scrolled up grows the message array without limit.
+const HARD_MESSAGE_CAP = 400;
+
 export const scrollFlags = {
   scrollToUnread: false,
   prevScrollHeight: null as number | null,
@@ -56,15 +61,16 @@ function doJoin(topic: string, onJoinOk: (data: Record<string, unknown>) => void
         ? [...prev.messages, msg]
         : [...prev.messages.slice(0, idx), msg, ...prev.messages.slice(idx)];
 
-      // Only trim while the user is at the bottom — trimming the top while
-      // they're scrolled up reading history would yank content out from under
-      // them. When scrolled up we let it grow; the next message at bottom
-      // trims it back down.
-      if (!scrollFlags.atBottom || inserted.length <= LIVE_MESSAGE_CAP) {
+      // At the bottom we keep a tight window (LIVE_MESSAGE_CAP). When scrolled
+      // up we avoid trimming so the user's view isn't yanked — but still
+      // enforce HARD_MESSAGE_CAP so memory can't grow without bound in a busy
+      // channel left scrolled up.
+      const cap = scrollFlags.atBottom ? LIVE_MESSAGE_CAP : HARD_MESSAGE_CAP;
+      if (inserted.length <= cap) {
         return { ...prev, messages: inserted };
       }
 
-      const removed = inserted.length - LIVE_MESSAGE_CAP;
+      const removed = inserted.length - cap;
       const messages = inserted.slice(removed);
       const unreadStartIndex =
         prev.unreadStartIndex === null || prev.unreadStartIndex - removed < 0
