@@ -1,4 +1,5 @@
 import { useLayoutEffect, useEffect, useRef, useState, useCallback } from 'react';
+import { ArrowDownIcon } from 'lucide-react';
 import { useSelector } from '@tanstack/react-store';
 import type { Message } from '@/types';
 import { chatStore } from '@/stores/chatStore';
@@ -22,6 +23,9 @@ export default function MessageArea({ username, userId }: Props) {
   const serverUrl = useSelector(chatStore, (s) => s.serverUrl);
 
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
+  // Mirrors scrollFlags.atBottom as React state so the "jump to present"
+  // button can show/hide. Driven by the scroll handler below.
+  const [atBottom, setAtBottom] = useState(true);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const dividerRef = useRef<HTMLDivElement | null>(null);
@@ -57,8 +61,9 @@ export default function MessageArea({ username, userId }: Props) {
     const container = scrollContainerRef.current;
     if (!container) return;
     const onScroll = () => {
-      scrollFlags.atBottom =
-        container.scrollHeight - container.scrollTop - container.clientHeight < 80;
+      const next = container.scrollHeight - container.scrollTop - container.clientHeight < 80;
+      scrollFlags.atBottom = next;
+      setAtBottom((prev) => (prev === next ? prev : next));
     };
     onScroll();
     container.addEventListener('scroll', onScroll, { passive: true });
@@ -109,6 +114,21 @@ export default function MessageArea({ username, userId }: Props) {
     loadMoreMessages();
   }
 
+  function jumpToNow() {
+    // Re-enables the live trim (LIVE_MESSAGE_CAP) and resumes tailing.
+    scrollFlags.atBottom = true;
+    setAtBottom(true);
+    shouldScrollToEndRef.current = true;
+    messagesEndRef.current?.scrollIntoView();
+  }
+
+  function handleSubmit(content: string, files: File[]) {
+    // Sending implies you want to follow your own message — resume tailing so
+    // it (and the live tail) scrolls into view even if you'd scrolled up.
+    jumpToNow();
+    return sendMessage(content, files);
+  }
+
   const dmTargetUser =
     activeView?.type === 'dm' ? activeView.dmChannel.other_user :
     activeView?.type === 'pending_dm' ? activeView.targetUser : null;
@@ -119,27 +139,38 @@ export default function MessageArea({ username, userId }: Props) {
 
   return (
     <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-      <MessageList
-        messages={messages}
-        unreadStartIndex={unreadStartIndex}
-        messagesEndRef={messagesEndRef}
-        dividerRef={dividerRef}
-        scrollContainerRef={scrollContainerRef}
-        currentUsername={username}
-        currentUserId={userId}
-        serverUrl={serverUrl}
-        hasMore={hasMore}
-        loadingMore={loadingMore}
-        onLoadMore={handleLoadMore}
-        onPoke={sendPoke}
-        onOpenDm={openDm}
-        editingMessageId={editingMessageId}
-        onStartEdit={handleStartEdit}
-        onCancelEdit={handleCancelEdit}
-        onSubmitEdit={handleSubmitEdit}
-      />
+      <div className="relative flex flex-col flex-1 min-h-0">
+        <MessageList
+          messages={messages}
+          unreadStartIndex={unreadStartIndex}
+          messagesEndRef={messagesEndRef}
+          dividerRef={dividerRef}
+          scrollContainerRef={scrollContainerRef}
+          currentUsername={username}
+          currentUserId={userId}
+          serverUrl={serverUrl}
+          hasMore={hasMore}
+          loadingMore={loadingMore}
+          onLoadMore={handleLoadMore}
+          onPoke={sendPoke}
+          onOpenDm={openDm}
+          editingMessageId={editingMessageId}
+          onStartEdit={handleStartEdit}
+          onCancelEdit={handleCancelEdit}
+          onSubmitEdit={handleSubmitEdit}
+        />
+        {!atBottom && (
+          <button
+            onClick={jumpToNow}
+            className="absolute bottom-3 right-4 z-10 flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-lg cursor-pointer hover:bg-primary/90 transition-colors animate-in fade-in slide-in-from-bottom-2"
+          >
+            <ArrowDownIcon className="size-3.5" />
+            Jump to present
+          </button>
+        )}
+      </div>
       <TypingIndicator names={[...typingUsers.values()]} />
-      <MessageInput label={messageLabel} onSubmit={sendMessage} onTyping={sendTyping} onUpArrow={handleUpArrow} />
+      <MessageInput label={messageLabel} onSubmit={handleSubmit} onTyping={sendTyping} onUpArrow={handleUpArrow} />
     </div>
   );
 }
