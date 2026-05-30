@@ -109,6 +109,12 @@ defmodule Voxr.Chat do
       |> select([m], max(m.id))
       |> Repo.one() || 0
 
+    mark_read(user_id, channel_id, last_id)
+  end
+
+  # Variant for callers that already know the latest message id (e.g. the
+  # live new_message handler), skipping the SELECT max(id) round-trip.
+  def mark_read(user_id, channel_id, last_id) do
     Repo.insert!(
       %ChannelRead{user_id: user_id, channel_id: channel_id, last_read_id: last_id},
       on_conflict: [set: [last_read_id: last_id, updated_at: DateTime.utc_now(:second)]],
@@ -277,18 +283,23 @@ defmodule Voxr.Chat do
   end
 
   defp broadcast_unread_updates(message) do
-    readers =
-      ChannelRead
-      |> where(channel_id: ^message.channel_id)
-      |> where([r], r.user_id != ^message.user_id)
+    # Single grouped query computes every reader's unread count at once,
+    # instead of two queries per reader. count(m.id) is 0 when the left join
+    # finds no newer messages.
+    counts =
+      from(r in ChannelRead,
+        left_join: m in Message,
+        on: m.channel_id == r.channel_id and m.id > r.last_read_id,
+        where: r.channel_id == ^message.channel_id and r.user_id != ^message.user_id,
+        group_by: r.user_id,
+        select: {r.user_id, count(m.id)}
+      )
       |> Repo.all()
 
-    for read <- readers do
-      count = unread_count(read.user_id, message.channel_id)
-
+    for {user_id, count} <- counts do
       Phoenix.PubSub.broadcast(
         Voxr.PubSub,
-        "user:#{read.user_id}",
+        "user:#{user_id}",
         {:unread_updated, message.channel_id, count}
       )
     end

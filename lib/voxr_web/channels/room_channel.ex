@@ -110,9 +110,38 @@ defmodule VoxrWeb.RoomChannel do
 
   def handle_info({:new_message, message}, socket) do
     push(socket, "new_message", serialize_message(message))
-    Chat.mark_read(socket.assigns.current_user.id, socket.assigns.channel_id)
     push(socket, "unread_updated", %{channel_id: socket.assigns.channel_id, count: 0})
-    {:noreply, socket}
+    {:noreply, throttled_mark_read(socket, message.id)}
+  end
+
+  @impl true
+  def terminate(_reason, socket) do
+    # Flush the latest read position on leave/disconnect so throttling never
+    # loses read state (join also re-marks, so this only matters mid-session).
+    if last_id = socket.assigns[:pending_read_id] do
+      Chat.mark_read(socket.assigns.current_user.id, socket.assigns.channel_id, last_id)
+    end
+
+    :ok
+  end
+
+  # Persist read state at most once every few seconds per viewer rather than on
+  # every incoming message. The client UI is kept correct by the count:0 push
+  # above; the DB row only needs to be roughly current for other sessions.
+  @read_persist_interval_ms 3_000
+  defp throttled_mark_read(socket, message_id) do
+    now = System.monotonic_time(:millisecond)
+    last_persist = socket.assigns[:last_read_persist] || 0
+
+    if now - last_persist >= @read_persist_interval_ms do
+      Chat.mark_read(socket.assigns.current_user.id, socket.assigns.channel_id, message_id)
+
+      socket
+      |> assign(:last_read_persist, now)
+      |> assign(:pending_read_id, nil)
+    else
+      assign(socket, :pending_read_id, message_id)
+    end
   end
 
   defp serialize_user(user) do
